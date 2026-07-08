@@ -223,7 +223,7 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
 .plot-progress-bar.full { background:linear-gradient(90deg,#FFB74D,#FF9800); }
 
 .plot-stats { display:flex; justify-content:center; gap:10px; font-size:14px; margin-top:4px; }
-.plot-label { font-size:11px; color:rgba(255,255,255,.8); margin-top:2px; }
+.plot-label { font-size:11px; color:#ff1744; margin-top:2px; font-weight:600; }
 .plot-badge { position:absolute; top:-8px; right:-8px; background:var(--accent); color:#fff; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,.3); animation:bounce 1s ease-in-out infinite; }
 @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
 
@@ -282,6 +282,27 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
 .toast.warn { background:var(--accent); }
 @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
 
+/* ===== Auth ===== */
+.auth-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:5000; display:none; align-items:center; justify-content:center; }
+.auth-overlay.show { display:flex; }
+.auth-panel { background:var(--card); border-radius:16px; width:400px; max-width:90vw; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; }
+.auth-tabs { display:flex; }
+.auth-tab { flex:1; padding:14px; text-align:center; font-size:15px; font-weight:600; cursor:pointer; border:none; background:var(--bg); color:var(--text-light); transition:all .2s; }
+.auth-tab.active { background:var(--card); color:var(--primary); border-bottom:2px solid var(--primary); }
+.auth-body { padding:24px; }
+.auth-body .form-group { margin-bottom:16px; }
+.auth-body .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+.auth-body .form-group input, .auth-body .form-group select { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; outline:none; }
+.auth-body .form-group input:focus, .auth-body .form-group select:focus { border-color:var(--primary-light); }
+.auth-btn { width:100%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:15px; font-weight:600; margin-top:8px; transition:all .2s; }
+.auth-btn:hover { background:var(--primary-dark); }
+.auth-hint { text-align:center; font-size:12px; color:var(--text-light); margin-top:10px; }
+.auth-close { position:absolute; top:12px; right:12px; width:32px; height:32px; border:none; background:var(--bg); border-radius:50%; cursor:pointer; font-size:14px; color:var(--text-light); }
+.user-bar { display:flex; align-items:center; gap:8px; margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,.2); }
+.user-bar .user-role { font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(255,255,255,.2); }
+.user-bar .btn-logout { font-size:11px; padding:3px 10px; background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:8px; cursor:pointer; margin-left:auto; }
+.user-bar .btn-logout:hover { background:rgba(255,255,255,.35); }
+
 /* ===== Custom Marker ===== */
 .custom-marker { background:none !important; border:none !important; }
 .marker-icon { width:36px; height:36px; background:var(--primary); border:2px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer; transition:transform .2s; }
@@ -310,6 +331,14 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
     <div class="sidebar-header">
       <i class="fas fa-seedling"></i>
       <h1>城郊家庭农场平台</h1>
+    </div>
+    <div class="sidebar-section" id="userBar" style="display:none;padding:10px 18px;">
+      <div class="user-bar">
+        <i class="fas fa-user-circle" style="font-size:20px;color:#fff;"></i>
+        <span id="userNameDisplay" style="color:#fff;font-size:13px;font-weight:600;"></span>
+        <span class="user-role" id="userRoleDisplay"></span>
+        <button class="btn-logout" onclick="logout()">退出</button>
+      </div>
     </div>
     <div class="sidebar-body">
       <!-- Search -->
@@ -505,11 +534,152 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)" />
 <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)" />
 
+<!-- Auth Modal -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-panel">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">登录</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">注册</button>
+    </div>
+    <div class="auth-body" id="authLoginForm">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名" />
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码" />
+      </div>
+      <button class="auth-btn" onclick="handleLogin()">登 录</button>
+      <div class="auth-hint">管理员账号：admin / admin123</div>
+    </div>
+    <div class="auth-body" id="authRegisterForm" style="display:none;">
+      <div class="form-group">
+        <label>用户名 <span style="color:var(--danger);">*</span></label>
+        <input type="text" id="regUsername" placeholder="请输入用户名" />
+      </div>
+      <div class="form-group">
+        <label>昵称</label>
+        <input type="text" id="regName" placeholder="请输入昵称" />
+      </div>
+      <div class="form-group">
+        <label>密码 <span style="color:var(--danger);">*</span></label>
+        <input type="password" id="regPassword" placeholder="至少4位密码" />
+      </div>
+      <div class="form-group">
+        <label>注册身份</label>
+        <select id="regRole">
+          <option value="farmer">农场主（可管理自己农场）</option>
+          <option value="viewer">普通用户（仅浏览）</option>
+        </select>
+      </div>
+      <button class="auth-btn" onclick="handleRegister()">注 册</button>
+      <div class="auth-hint">已有账号？切换到上方「登录」</div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ===== User Auth =====
+let currentUser = null;
+function getUsers() { return JSON.parse(localStorage.getItem('farm_users_v1') || '[]'); }
+function saveUsers(users) { localStorage.setItem('farm_users_v1', JSON.stringify(users)); }
+function initAuth() {
+  const users = getUsers();
+  if (users.length === 0) {
+    users.push({ id:'u_admin', username:'admin', password:'admin123', name:'系统管理员', role:'admin', registeredAt:Date.now() });
+    saveUsers(users);
+  }
+  const saved = localStorage.getItem('farm_current_user');
+  if (saved) { currentUser = JSON.parse(saved); updateUserUI(); return true; }
+  showAuth();
+  return false;
+}
+function showAuth() { document.getElementById('authOverlay').classList.add('show'); }
+function hideAuth() { document.getElementById('authOverlay').classList.remove('show'); }
+function switchAuthTab(tab) {
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active', tab==='register');
+  document.getElementById('authLoginForm').style.display = tab==='login'?'':'none';
+  document.getElementById('authRegisterForm').style.display = tab==='register'?'':'none';
+}
+function handleLogin() {
+  const uname = document.getElementById('loginUsername').value.trim();
+  const pwd = document.getElementById('loginPassword').value;
+  if (!uname || !pwd) { showToast('请输入用户名和密码', 'error'); return; }
+  const user = getUsers().find(u => u.username === uname && u.password === pwd);
+  if (!user) { showToast('用户名或密码错误', 'error'); return; }
+  currentUser = user;
+  localStorage.setItem('farm_current_user', JSON.stringify(user));
+  hideAuth();
+  updateUserUI();
+  renderAll();
+  showToast('欢迎回来，'+user.name+'！', 'success');
+}
+function handleRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const name = document.getElementById('regName').value.trim() || username;
+  const password = document.getElementById('regPassword').value;
+  const role = document.getElementById('regRole').value;
+  if (!username || !password) { showToast('用户名和密码不能为空', 'error'); return; }
+  if (password.length < 4) { showToast('密码至少4位', 'error'); return; }
+  const users = getUsers();
+  if (users.find(u => u.username === username)) { showToast('用户名已存在', 'error'); return; }
+  const user = { id:'u_'+Date.now().toString(36), username, password, name, role, registeredAt:Date.now() };
+  users.push(user);
+  saveUsers(users);
+  currentUser = user;
+  localStorage.setItem('farm_current_user', JSON.stringify(user));
+  hideAuth();
+  updateUserUI();
+  renderAll();
+  showToast('注册成功，欢迎 '+name+'！', 'success');
+}
+function logout() {
+  if (monitoringInterval) { clearInterval(monitoringInterval); monitoringInterval = null; }
+  if (growthInterval) { clearInterval(growthInterval); growthInterval = null; }
+  currentUser = null;
+  localStorage.removeItem('farm_current_user');
+  activeFarmId = null; editingFarmId = null; isAddingFarm = false;
+  document.getElementById('formDrawer').classList.remove('show');
+  document.getElementById('detailOverlay').classList.remove('show');
+  document.getElementById('monitorOverlay').classList.remove('show');
+  document.getElementById('userBar').style.display = 'none';
+  renderAll();
+  showAuth();
+}
+function updateUserUI() {
+  if (!currentUser) { document.getElementById('userBar').style.display='none'; return; }
+  document.getElementById('userBar').style.display = 'block';
+  document.getElementById('userNameDisplay').textContent = currentUser.name;
+  const roleMap = { admin:'管理员', farmer:'农场主', viewer:'普通用户' };
+  document.getElementById('userRoleDisplay').textContent = roleMap[currentUser.role] || currentUser.role;
+  // Show/hide sidebar footer buttons based on role
+  const footerBtns = document.querySelector('.sidebar-footer');
+  if (footerBtns) {
+    footerBtns.querySelector('.btn-add').style.display = canAdd() ? '' : 'none';
+    footerBtns.querySelector('.btn-export').style.display = isAdmin() ? '' : 'none';
+  }
+}
+
+// ---- Permission helpers ----
+function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+function isFarmer() { return currentUser && currentUser.role === 'farmer'; }
+function isViewer() { return currentUser && currentUser.role === 'viewer'; }
+function canAdd() { return currentUser && !isViewer(); }
+function canEditFarm(farm) {
+  if (!currentUser) return false;
+  if (isAdmin()) return true;
+  if (isViewer()) return false;
+  if (isFarmer()) return farm.ownerId === currentUser.id;
+  return false;
+}
+function canDeleteFarm(farm) { return canEditFarm(farm); }
+
 // ===== Vegetable Types =====
 const VEG_TYPES = {
   tomato:     { name:'番茄',   stages:['🌱','🌿','🌸','🍅'], growTime:60 },
@@ -634,16 +804,20 @@ function renderList() {
     const iconSymbol = farm.type==='种植' ? 'fa-leaf' : farm.type==='养殖' ? 'fa-horse' : 'fa-th-large';
     const isActive = activeFarmId === farm.id;
     const photoCount = (farm.photos || []).length;
+    const editable = canEditFarm(farm);
+    let actionsHtml = '<div class="actions">'+
+      '<button onclick="event.stopPropagation();showDetail(\''+farm.id+'\')" title="详情"><i class="fas fa-eye"></i></button>'+
+      '<button onclick="event.stopPropagation();openMonitoring(\''+farm.id+'\')" title="监控"><i class="fas fa-chart-line"></i></button>';
+    if (editable) {
+      actionsHtml += '<button onclick="event.stopPropagation();editFarm(\''+farm.id+'\')" title="编辑"><i class="fas fa-edit"></i></button>'+
+        '<button class="del" onclick="event.stopPropagation();deleteFarm(\''+farm.id+'\')" title="删除"><i class="fas fa-trash"></i></button>';
+    }
+    actionsHtml += '</div>';
     return '<div class="farm-card '+(isActive?'active':'')+'" onclick="focusFarm(\''+farm.id+'\')">'+
       '<div class="icon" style="background:'+iconColor+'"><i class="fas '+iconSymbol+'"></i></div>'+
       '<div class="info"><div class="name">'+farm.name+(photoCount>0?' <span class="monitor-badge">📷'+photoCount+'</span>':'')+'</div>'+
       '<div class="desc">'+farm.type+' · '+(farm.area||'-')+'亩 · '+(farm.products||'-')+'</div></div>'+
-      '<div class="actions">'+
-        '<button onclick="event.stopPropagation();showDetail(\''+farm.id+'\')" title="详情"><i class="fas fa-eye"></i></button>'+
-        '<button onclick="event.stopPropagation();openMonitoring(\''+farm.id+'\')" title="监控"><i class="fas fa-chart-line"></i></button>'+
-        '<button onclick="event.stopPropagation();editFarm(\''+farm.id+'\')" title="编辑"><i class="fas fa-edit"></i></button>'+
-        '<button class="del" onclick="event.stopPropagation();deleteFarm(\''+farm.id+'\')" title="删除"><i class="fas fa-trash"></i></button>'+
-      '</div></div>';
+      actionsHtml+'</div>';
   }).join('');
 }
 
@@ -679,6 +853,7 @@ function setFilter(type) {
 
 // ===== Add Farm (fixed: uses right-side drawer, map stays interactive) =====
 function startAddFarm() {
+  if (!canAdd()) { showToast('您没有添加农场的权限', 'error'); return; }
   editingFarmId = null;
   isAddingFarm = true;
   tempLatLng = null;
@@ -708,6 +883,7 @@ function closeForm() {
 function saveFarm() {
   const name = document.getElementById('farmName').value.trim();
   if (!name) { showToast('请输入农场名称', 'error'); return; }
+  if (!canAdd()) { showToast('您没有添加农场的权限', 'error'); return; }
   const data = {
     name, type:document.getElementById('farmType').value,
     area:Number(document.getElementById('farmArea').value)||0,
@@ -720,10 +896,12 @@ function saveFarm() {
   if (editingFarmId) {
     const idx = farms.findIndex(f => f.id === editingFarmId);
     if (idx >= 0) {
+      if (!canEditFarm(farms[idx])) { showToast('您没有编辑此农场的权限', 'error'); return; }
       if (tempLatLng) { data.lat = tempLatLng.lat; data.lng = tempLatLng.lng; }
       else { data.lat = farms[idx].lat; data.lng = farms[idx].lng; }
       data.photos = farms[idx].photos || [];
       data.monitoring = farms[idx].monitoring || null;
+      data.ownerId = farms[idx].ownerId;
       farms[idx] = { ...farms[idx], ...data };
       showToast('农场信息已更新', 'success');
     }
@@ -732,6 +910,7 @@ function saveFarm() {
     data.id = genId();
     data.lat = tempLatLng.lat; data.lng = tempLatLng.lng;
     data.photos = [];
+    data.ownerId = currentUser ? currentUser.id : null;
     farms.push(data);
     showToast('农场已添加', 'success');
   }
@@ -744,6 +923,7 @@ function saveFarm() {
 function editFarm(id) {
   const farm = farms.find(f => f.id === id);
   if (!farm) return;
+  if (!canEditFarm(farm)) { showToast('您没有编辑此农场的权限', 'error'); return; }
   editingFarmId = id;
   isAddingFarm = true;
   tempLatLng = farm.lat ? L.latLng(farm.lat, farm.lng) : null;
@@ -787,25 +967,30 @@ function showDetail(id) {
   const photos = farm.photos || [];
   html += '<div class="photo-section">'+
     '<div class="photo-section-title"><i class="fas fa-camera"></i> 现场照片 ('+photos.length+'/12)</div>'+
-    '<div class="photo-grid" id="photoGrid">'+renderPhotoGrid(photos)+'</div>'+
+    '<div class="photo-grid" id="photoGrid">'+renderPhotoGrid(photos, canEditFarm(farm))+'</div>'+
     '<div class="photo-actions">'+
-      '<button class="btn-photo" onclick="openCamera()"><i class="fas fa-camera"></i> 拍照</button>'+
-      '<button class="btn-photo" onclick="openFilePicker()"><i class="fas fa-upload"></i> 上传</button>'+
+      (canEditFarm(farm) ? '<button class="btn-photo" onclick="openCamera()"><i class="fas fa-camera"></i> 拍照</button>'+
+      '<button class="btn-photo" onclick="openFilePicker()"><i class="fas fa-upload"></i> 上传</button>' : '<span style="font-size:12px;color:var(--text-light);">只读模式，无法修改照片</span>')+
     '</div></div>';
 
   document.getElementById('detailBody').innerHTML = html;
+  // Update footer buttons based on permissions
+  const canEdit = canEditFarm(farm);
+  document.querySelector('#detailOverlay .btn-monitor').style.display = '';
+  document.querySelector('#detailOverlay .btn-edit').style.display = canEdit ? '' : 'none';
+  document.querySelector('#detailOverlay .btn-del').style.display = canEdit ? '' : 'none';
   document.getElementById('detailOverlay').classList.add('show');
   renderList();
 }
 
-function renderPhotoGrid(photos) {
+function renderPhotoGrid(photos, canEdit=true) {
   let html = photos.map((p, i) =>
     '<div class="photo-thumb" onclick="openLightbox('+i+')">'+
     '<img src="'+p+'" alt="照片'+(i+1)+'" />'+
-    '<button class="photo-del" onclick="event.stopPropagation();deletePhoto('+i+')"><i class="fas fa-times"></i></button>'+
+    (canEdit ? '<button class="photo-del" onclick="event.stopPropagation();deletePhoto('+i+')"><i class="fas fa-times"></i></button>' : '')+
     '</div>'
   ).join('');
-  if (photos.length < 12) {
+  if (photos.length < 12 && canEdit) {
     html += '<div class="photo-empty" onclick="openFilePicker()"><i class="fas fa-plus"></i></div>';
   }
   return html;
@@ -825,6 +1010,7 @@ function deleteFarmFromDetail() {
   if (!activeFarmId) return;
   const farm = farms.find(f => f.id === activeFarmId);
   if (!farm) return;
+  if (!canDeleteFarm(farm)) { showToast('您没有删除此农场的权限', 'error'); return; }
   if (confirm('确认删除「'+farm.name+'」？此操作不可恢复。')) {
     farms = farms.filter(f => f.id !== activeFarmId);
     saveToStorage();
@@ -836,6 +1022,7 @@ function deleteFarmFromDetail() {
 function deleteFarm(id) {
   const farm = farms.find(f => f.id === id);
   if (!farm) return;
+  if (!canDeleteFarm(farm)) { showToast('您没有删除此农场的权限', 'error'); return; }
   if (confirm('确认删除「'+farm.name+'」？')) {
     farms = farms.filter(f => f.id !== id);
     saveToStorage();
@@ -851,6 +1038,7 @@ let cameraFacingMode = 'environment';
 function openCamera() {
   const farm = farms.find(f => f.id === activeFarmId);
   if (!farm) { showToast('请先选择农场', 'error'); return; }
+  if (!canEditFarm(farm)) { showToast('您没有修改此农场的权限', 'error'); return; }
   if ((farm.photos || []).length >= 12) { showToast('最多只能上传12张照片', 'warn'); return; }
   startCamera();
 }
@@ -900,6 +1088,7 @@ function capturePhoto() {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
   const farm = farms.find(f => f.id === activeFarmId);
   if (!farm) { closeCamera(); return; }
+  if (!canEditFarm(farm)) { closeCamera(); showToast('您没有修改此农场的权限', 'error'); return; }
   if (!farm.photos) farm.photos = [];
   compressImage(dataUrl, 800, 0.7, function(compressed) {
     farm.photos.push(compressed);
@@ -917,6 +1106,7 @@ function handlePhotoSelect(e) {
   if (!files || files.length === 0) return;
   const farm = farms.find(f => f.id === activeFarmId);
   if (!farm) { showToast('请先选择农场', 'error'); return; }
+  if (!canEditFarm(farm)) { showToast('您没有修改此农场的权限', 'error'); e.target.value=''; return; }
   if (!farm.photos) farm.photos = [];
   let remaining = 12 - farm.photos.length;
   if (remaining <= 0) { showToast('最多只能上传12张照片', 'warn'); e.target.value=''; return; }
@@ -958,6 +1148,7 @@ function compressImage(dataUrl, maxWidth, quality, callback) {
 function deletePhoto(index) {
   const farm = farms.find(f => f.id === activeFarmId);
   if (!farm || !farm.photos) return;
+  if (!canEditFarm(farm)) { showToast('您没有修改此农场的权限', 'error'); return; }
   farm.photos.splice(index, 1);
   saveToStorage();
   showDetail(farm.id);
@@ -1145,7 +1336,7 @@ function renderMonitoring() {
     statsHtml = '<span class="trophy">🏆</span><span>累计收获: </span><span id="harvestCount">'+m.harvest+'</span><span style="margin-left:12px;">📦</span><span>在养在种: </span><span id="plantingCount">'+m.plots.filter(p=>p.type).length+'</span>';
   }
   document.getElementById('monitorStats').innerHTML = statsHtml;
-  document.getElementById('monitorActions').innerHTML = actionsHtml;
+  document.getElementById('monitorActions').innerHTML = isViewer() ? '<span style="color:rgba(255,255,255,.8);font-size:13px;">🔒 只读模式，无法操作</span>' : actionsHtml;
 }
 
 function renderCropTile(plot) {
@@ -1501,6 +1692,7 @@ document.addEventListener('keydown', function(e) {
     else if (document.getElementById('monitorOverlay').classList.contains('show')) closeMonitoring();
     else if (document.getElementById('formDrawer').classList.contains('show')) closeForm();
     else if (document.getElementById('detailOverlay').classList.contains('show')) closeDetail();
+    else if (document.getElementById('authOverlay').classList.contains('show')) hideAuth();
   }
   if (e.key === 'ArrowLeft' && document.getElementById('photoLightbox').classList.contains('show')) navigateLightbox(-1);
   if (e.key === 'ArrowRight' && document.getElementById('photoLightbox').classList.contains('show')) navigateLightbox(1);
@@ -1511,12 +1703,13 @@ if (!localStorage.getItem('farmDataV2')) {
   localStorage.removeItem('farms');
   localStorage.setItem('farmDataV2', '1');
 }
-renderAll();
-
-const farmsWithCoords = farms.filter(f => f.lat && f.lng);
-if (farmsWithCoords.length > 0) {
-  const bounds = L.latLngBounds(farmsWithCoords.map(f => [f.lat, f.lng]));
-  map.fitBounds(bounds, { padding:[40,40] });
+if (initAuth()) {
+  renderAll();
+  const farmsWithCoords = farms.filter(f => f.lat && f.lng);
+  if (farmsWithCoords.length > 0) {
+    const bounds = L.latLngBounds(farmsWithCoords.map(f => [f.lat, f.lng]));
+    map.fitBounds(bounds, { padding:[40,40] });
+  }
 }
 </script>
 </body>
