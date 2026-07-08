@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>城郊家庭农场信息平台</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+:root {
+  --primary: #2e7d32;
+  --primary-light: #4caf50;
+  --primary-dark: #1b5e20;
+  --accent: #ff9800;
+  --bg: #f5f5f5;
+  --card: #ffffff;
+  --text: #333333;
+  --text-light: #666666;
+  --border: #e0e0e0;
+  --danger: #d32f2f;
+  --sidebar-w: 340px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; }
+
+/* ===== Layout ===== */
+.app { display:flex; height:100vh; }
+.sidebar { width:var(--sidebar-w); background:var(--card); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:1000; }
+.map-area { flex:1; position:relative; }
+
+/* ===== Sidebar ===== */
+.sidebar-header { background:var(--primary); color:#fff; padding:18px 20px; display:flex; align-items:center; gap:10px; }
+.sidebar-header i { font-size:22px; }
+.sidebar-header h1 { font-size:18px; font-weight:600; letter-spacing:1px; }
+
+.sidebar-body { flex:1; overflow-y:auto; padding:0; }
+.sidebar-section { padding:14px 18px; border-bottom:1px solid var(--border); }
+.sidebar-section-title { font-size:13px; color:var(--text-light); font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+
+/* Search */
+.search-box { display:flex; gap:8px; }
+.search-box input { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; outline:none; transition:border .2s; }
+.search-box input:focus { border-color:var(--primary-light); }
+.search-box button { padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
+
+/* Filter */
+.filter-row { display:flex; gap:6px; flex-wrap:wrap; }
+.filter-tag { padding:5px 12px; border:1px solid var(--border); border-radius:16px; font-size:12px; cursor:pointer; transition:all .2s; background:#fff; }
+.filter-tag.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.filter-tag:hover { border-color:var(--primary-light); }
+
+/* Stats */
+.stats-row { display:flex; gap:12px; }
+.stat-item { flex:1; background:var(--bg); padding:10px; border-radius:8px; text-align:center; }
+.stat-item .num { font-size:22px; font-weight:700; color:var(--primary); }
+.stat-item .label { font-size:11px; color:var(--text-light); margin-top:2px; }
+
+/* Farm List */
+.farm-list { display:flex; flex-direction:column; gap:8px; }
+.farm-card { display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--bg); border-radius:8px; cursor:pointer; transition:all .2s; border:2px solid transparent; }
+.farm-card:hover { background:#e8f5e9; border-color:var(--primary-light); }
+.farm-card.active { background:#c8e6c9; border-color:var(--primary); }
+.farm-card .icon { width:36px; height:36px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.farm-card .info { flex:1; min-width:0; }
+.farm-card .info .name { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.farm-card .info .desc { font-size:11px; color:var(--text-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.farm-card .actions { display:flex; gap:4px; }
+.farm-card .actions button { width:28px; height:28px; border:none; background:transparent; color:var(--text-light); cursor:pointer; border-radius:4px; font-size:12px; transition:all .2s; }
+.farm-card .actions button:hover { background:var(--border); color:var(--text); }
+.farm-card .actions .del:hover { background:#ffebee; color:var(--danger); }
+.farm-card .monitor-badge { font-size:10px; background:var(--accent); color:#fff; padding:2px 6px; border-radius:8px; margin-left:4px; }
+
+/* Sidebar Footer */
+.sidebar-footer { padding:14px 18px; border-top:1px solid var(--border); display:flex; gap:8px; }
+.btn-add { flex:1; padding:10px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .2s; }
+.btn-add:hover { background:var(--primary-dark); }
+.btn-export { padding:10px 16px; background:#fff; color:var(--primary); border:1px solid var(--primary); border-radius:8px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .2s; }
+.btn-export:hover { background:#e8f5e9; }
+
+/* ===== Map ===== */
+#map { width:100%; height:100%; }
+.leaflet-control-zoom { border:none !important; }
+.leaflet-control-zoom a { background:var(--card) !important; color:var(--text) !important; border:1px solid var(--border) !important; width:36px !important; height:36px !important; line-height:36px !important; font-size:16px !important; }
+
+/* Map toolbar */
+.map-toolbar { position:absolute; top:16px; right:16px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+.map-tool-btn { width:42px; height:42px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--text); transition:all .2s; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+.map-tool-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+.map-tool-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* Map prompt */
+.map-prompt { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); z-index:999; background:var(--primary); color:#fff; padding:10px 24px; border-radius:24px; font-size:14px; display:none; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,.2); cursor:default; }
+.map-prompt.show { display:flex; }
+
+/* ===== Form Drawer (fixed: right-side panel, map stays interactive) ===== */
+.form-drawer { position:fixed; right:0; top:0; height:100vh; width:420px; max-width:90vw; background:var(--card); z-index:2000; box-shadow:-4px 0 24px rgba(0,0,0,.15); transform:translateX(100%); transition:transform .3s ease; display:flex; flex-direction:column; }
+.form-drawer.show { transform:translateX(0); }
+.form-drawer-header { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background:var(--primary); color:#fff; }
+.form-drawer-header h2 { font-size:18px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.form-drawer-close { width:32px; height:32px; border:none; background:rgba(255,255,255,.2); border-radius:8px; cursor:pointer; font-size:16px; color:#fff; transition:all .2s; }
+.form-drawer-close:hover { background:rgba(255,255,255,.35); }
+.form-drawer-body { flex:1; overflow-y:auto; padding:20px 24px; }
+.form-drawer-footer { padding:16px 24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--border); }
+
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:13px; font-weight:600; color:var(--text); margin-bottom:6px; }
+.form-group label .required { color:var(--danger); font-size:12px; }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px; outline:none; transition:border .2s; font-family:inherit; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--primary-light); }
+.form-group textarea { min-height:80px; resize:vertical; }
+.form-row { display:flex; gap:12px; }
+.form-row .form-group { flex:1; }
+
+.coordinate-display { background:var(--bg); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text-light); display:flex; align-items:center; gap:8px; }
+.coordinate-display i { color:var(--primary); }
+.coordinate-display .coords { font-weight:600; color:var(--text); }
+.coordinate-display.has-coord { background:#e8f5e9; border:1px solid var(--primary-light); }
+
+.btn-save { padding:10px 28px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; transition:all .2s; }
+.btn-save:hover { background:var(--primary-dark); }
+.btn-cancel { padding:10px 28px; background:#fff; color:var(--text-light); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:14px; transition:all .2s; }
+.btn-cancel:hover { background:var(--bg); color:var(--text); }
+
+/* ===== Detail Panel ===== */
+.detail-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:2000; display:none; align-items:center; justify-content:center; }
+.detail-overlay.show { display:flex; }
+.detail-panel { background:var(--card); border-radius:16px; width:520px; max-width:90vw; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.detail-header { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; }
+.detail-header .title-area { display:flex; align-items:center; gap:10px; }
+.detail-header .type-badge { padding:4px 10px; border-radius:12px; font-size:11px; background:var(--primary-light); color:#fff; }
+.detail-header h2 { font-size:18px; font-weight:600; }
+.detail-body { padding:0 24px 24px; }
+.detail-row { display:flex; padding:10px 0; border-bottom:1px solid var(--border); }
+.detail-row .dt { width:100px; font-size:13px; color:var(--text-light); flex-shrink:0; }
+.detail-row .dd { flex:1; font-size:14px; color:var(--text); }
+.detail-footer { padding:16px 24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--border); flex-wrap:wrap; }
+.btn-edit { padding:10px 24px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+.btn-del { padding:10px 24px; background:#fff; color:var(--danger); border:1px solid var(--danger); border-radius:8px; cursor:pointer; font-size:14px; }
+.btn-monitor { padding:10px 24px; background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px; }
+
+/* ===== Photo Section ===== */
+.photo-section { margin-top:16px; padding-top:16px; border-top:2px dashed var(--border); }
+.photo-section-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.photo-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:10px; }
+.photo-thumb { position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; cursor:pointer; background:var(--bg); }
+.photo-thumb img { width:100%; height:100%; object-fit:cover; transition:transform .2s; }
+.photo-thumb:hover img { transform:scale(1.1); }
+.photo-thumb .photo-del { position:absolute; top:2px; right:2px; width:22px; height:22px; background:rgba(211,47,47,.85); color:#fff; border:none; border-radius:50%; cursor:pointer; font-size:11px; display:none; align-items:center; justify-content:center; }
+.photo-thumb:hover .photo-del { display:flex; }
+.photo-empty { aspect-ratio:1; border-radius:8px; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-light); font-size:24px; cursor:pointer; transition:all .2s; }
+.photo-empty:hover { border-color:var(--primary-light); color:var(--primary); background:#e8f5e9; }
+.photo-actions { display:flex; gap:8px; }
+.btn-photo { flex:1; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .2s; }
+.btn-photo:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* ===== Photo Lightbox ===== */
+.photo-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:3500; display:none; align-items:center; justify-content:center; }
+.photo-lightbox.show { display:flex; }
+.photo-lightbox img { max-width:90vw; max-height:85vh; border-radius:8px; }
+.lightbox-close { position:absolute; top:20px; right:20px; width:40px; height:40px; background:rgba(255,255,255,.2); border:none; border-radius:50%; color:#fff; font-size:18px; cursor:pointer; }
+.lightbox-close:hover { background:rgba(255,255,255,.35); }
+.lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; background:rgba(255,255,255,.2); border:none; border-radius:50%; color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.lightbox-nav:hover { background:rgba(255,255,255,.35); }
+.lightbox-prev { left:20px; }
+.lightbox-next { right:20px; }
+
+/* ===== Camera Modal ===== */
+.camera-overlay { position:fixed; inset:0; background:rgba(0,0,0,.95); z-index:3600; display:none; flex-direction:column; align-items:center; justify-content:center; }
+.camera-overlay.show { display:flex; }
+.camera-container { position:relative; width:100%; max-width:720px; }
+.camera-container video { width:100%; border-radius:12px; background:#111; }
+.camera-canvas { display:none; }
+.camera-controls { display:flex; gap:20px; margin-top:20px; align-items:center; justify-content:center; }
+.camera-btn { width:64px; height:64px; border-radius:50%; border:4px solid #fff; background:rgba(255,255,255,.2); cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; }
+.camera-btn:hover { background:rgba(255,255,255,.4); transform:scale(1.1); }
+.camera-btn.capture { width:72px; height:72px; background:rgba(255,255,255,.9); border-color:#fff; }
+.camera-btn.capture:hover { background:#fff; }
+.camera-btn.capture::after { content:''; width:48px; height:48px; border-radius:50%; background:#fff; border:3px solid #333; }
+.camera-btn.close-cam { border-color:rgba(255,255,255,.4); }
+.camera-hint { color:rgba(255,255,255,.6); font-size:13px; margin-top:12px; }
+
+/* ===== Monitoring View (game-like) ===== */
+.monitor-overlay { position:fixed; inset:0; z-index:2500; display:none; }
+.monitor-overlay.show { display:block; }
+.monitor-view { width:100%; height:100vh; background:linear-gradient(180deg,#87CEEB 0%,#B3E5FC 25%,#C8E6C9 50%,#81C784 100%); display:flex; flex-direction:column; overflow:hidden; }
+.monitor-view.night { background:linear-gradient(180deg,#1a237e 0%,#283593 25%,#1B5E20 60%,#0d1f0d 100%); }
+
+.monitor-header { padding:16px 24px; display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.15); backdrop-filter:blur(10px); }
+.monitor-title { display:flex; align-items:center; gap:10px; font-size:20px; font-weight:700; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,.3); }
+.monitor-farm-icon { font-size:28px; }
+.monitor-live-badge { font-size:11px; background:#f44336; color:#fff; padding:3px 8px; border-radius:10px; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
+.monitor-close { width:40px; height:40px; background:rgba(255,255,255,.25); border:none; border-radius:10px; color:#fff; font-size:18px; cursor:pointer; transition:all .2s; }
+.monitor-close:hover { background:rgba(255,255,255,.4); }
+
+/* Sensor bar */
+.sensor-bar { padding:10px 24px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.sensor-card { background:rgba(255,255,255,.92); border-radius:12px; padding:8px 14px; display:flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(0,0,0,.12); transition:all .3s; min-width:100px; }
+.monitor-view.night .sensor-card { background:rgba(30,30,60,.85); color:#fff; }
+.sensor-card .sensor-icon { font-size:20px; }
+.sensor-card .sensor-val { font-size:18px; font-weight:700; }
+.sensor-card .sensor-unit { font-size:11px; opacity:.7; }
+.sensor-card .sensor-label { font-size:11px; opacity:.7; margin-top:-2px; }
+.sensor-card.alert .sensor-val { color:var(--danger); }
+.sensor-card.good .sensor-val { color:var(--primary); }
+
+/* Plot grid */
+.plot-grid { flex:1; padding:16px 24px; display:grid; grid-template-columns:repeat(4,1fr); gap:14px; overflow-y:auto; align-content:start; }
+.plot-tile { background:linear-gradient(145deg,#8D6E63,#6D4C41); border:3px solid #5D4037; border-radius:16px; padding:14px; text-align:center; position:relative; transition:all .3s; box-shadow:inset 0 -6px 12px rgba(0,0,0,.25),0 4px 12px rgba(0,0,0,.15); cursor:default; min-height:160px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; }
+.plot-tile.wet { background:linear-gradient(145deg,#6D4C41,#4E342E); }
+.plot-tile.dry { background:linear-gradient(145deg,#A1887F,#8D6E63); }
+.plot-tile.empty { background:linear-gradient(145deg,#BCAAA4,#A1887F); border-style:dashed; opacity:.7; cursor:pointer; }
+.plot-tile.empty:hover { opacity:1; border-color:var(--primary); }
+.plot-tile.mature { border-color:var(--accent); box-shadow:inset 0 -6px 12px rgba(0,0,0,.25),0 0 20px rgba(255,152,0,.5); animation:matureGlow 2s ease-in-out infinite; }
+@keyframes matureGlow { 0%,100%{box-shadow:inset 0 -6px 12px rgba(0,0,0,.25),0 0 12px rgba(255,152,0,.4);} 50%{box-shadow:inset 0 -6px 12px rgba(0,0,0,.25),0 0 28px rgba(255,152,0,.7);} }
+
+.plot-veg { font-size:42px; line-height:1; animation:sway 3s ease-in-out infinite; transition:all .5s; }
+@keyframes sway { 0%,100%{transform:rotate(-4deg);} 50%{transform:rotate(4deg);} }
+.plot-tile.empty .plot-veg { animation:none; font-size:28px; opacity:.5; }
+
+.plot-progress { width:100%; height:8px; background:rgba(0,0,0,.3); border-radius:4px; overflow:hidden; margin-top:6px; }
+.plot-progress-bar { height:100%; background:linear-gradient(90deg,#66BB6A,#43A047); border-radius:4px; transition:width .5s ease; }
+.plot-progress-bar.full { background:linear-gradient(90deg,#FFB74D,#FF9800); }
+
+.plot-stats { display:flex; justify-content:center; gap:10px; font-size:14px; margin-top:4px; }
+.plot-label { font-size:11px; color:rgba(255,255,255,.8); margin-top:2px; }
+.plot-badge { position:absolute; top:-8px; right:-8px; background:var(--accent); color:#fff; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,.3); animation:bounce 1s ease-in-out infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+
+.plot-actions { display:flex; gap:4px; margin-top:4px; }
+.plot-actions button { width:30px; height:30px; border:none; border-radius:8px; cursor:pointer; font-size:14px; background:rgba(255,255,255,.2); transition:all .2s; }
+.plot-actions button:hover { background:rgba(255,255,255,.4); transform:scale(1.15); }
+
+/* Watering effect */
+.water-effect { position:absolute; top:0; left:50%; transform:translateX(-50%); font-size:20px; pointer-events:none; animation:waterDrop .8s ease-in forwards; }
+@keyframes waterDrop { 0%{top:-20px;opacity:0;} 30%{opacity:1;} 100%{top:60px;opacity:0;} }
+
+/* Pen tile (livestock) */
+.pen-tile { background:linear-gradient(145deg,#EFEBE9,#D7CCC8); border:3px solid #A1887F; border-radius:16px; padding:14px; text-align:center; position:relative; transition:all .3s; box-shadow:inset 0 -6px 12px rgba(0,0,0,.15),0 4px 12px rgba(0,0,0,.12); min-height:160px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; }
+.pen-tile.full-feed { background:linear-gradient(145deg,#FFF8E1,#FFECB3); border-color:#FFB300; }
+.pen-tile.low-feed { background:linear-gradient(145deg,#EFEBE9,#BCAAA4); opacity:.85; }
+.pen-tile.empty { background:linear-gradient(145deg,#ECEFF1,#CFD8DC); border-style:dashed; opacity:.7; cursor:pointer; }
+.pen-tile.empty:hover { opacity:1; border-color:var(--primary); }
+.pen-tile.mature { border-color:var(--accent); box-shadow:inset 0 -6px 12px rgba(0,0,0,.15),0 0 20px rgba(255,152,0,.5); animation:matureGlow 2s ease-in-out infinite; }
+.pen-veg { font-size:42px; line-height:1; animation:bounce 2s ease-in-out infinite; transition:all .5s; }
+@keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+.pen-tile.empty .pen-veg { animation:none; font-size:28px; opacity:.5; }
+.feed-effect { position:absolute; top:0; left:50%; transform:translateX(-50%); font-size:20px; pointer-events:none; animation:feedDrop .8s ease-in forwards; }
+@keyframes feedDrop { 0%{top:-20px;opacity:0;} 30%{opacity:1;} 100%{top:50px;opacity:0;} }
+
+/* Monitor footer */
+.monitor-footer { padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; background:rgba(255,255,255,.15); backdrop-filter:blur(10px); flex-wrap:wrap; }
+.harvest-count { display:flex; align-items:center; gap:8px; color:#fff; font-size:16px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.3); }
+.harvest-count .trophy { font-size:24px; }
+.monitor-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.mon-btn { padding:10px 18px; border:none; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; transition:all .2s; color:#fff; }
+.mon-btn.water { background:#2196F3; }
+.mon-btn.fertilize { background:#9C27B0; }
+.mon-btn.harvest { background:#FF9800; }
+.mon-btn.plant { background:#4CAF50; }
+.mon-btn:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.2); }
+.mon-btn:active { transform:translateY(0); }
+
+/* ===== Plant Selection Modal ===== */
+.plant-modal { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; display:none; align-items:center; justify-content:center; }
+.plant-modal.show { display:flex; }
+.plant-modal-content { background:var(--card); border-radius:16px; padding:24px; width:400px; max-width:90vw; }
+.plant-modal-content h3 { font-size:18px; margin-bottom:16px; text-align:center; color:var(--primary-dark); }
+.veg-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+.veg-choice { padding:14px 8px; border:2px solid var(--border); border-radius:12px; cursor:pointer; text-align:center; transition:all .2s; background:var(--bg); }
+.veg-choice:hover { border-color:var(--primary); background:#e8f5e9; transform:translateY(-2px); }
+.veg-choice .veg-emoji { font-size:32px; display:block; }
+.veg-choice .veg-name { font-size:12px; margin-top:4px; color:var(--text); }
+.plant-modal-cancel { width:100%; padding:10px; background:#fff; color:var(--text-light); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:14px; }
+.plant-modal-cancel:hover { background:var(--bg); }
+
+/* ===== Toast ===== */
+.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:4000; background:var(--primary); color:#fff; padding:10px 24px; border-radius:8px; font-size:14px; display:none; box-shadow:0 4px 12px rgba(0,0,0,.2); }
+.toast.show { display:block; animation:toastIn .3s ease; }
+.toast.error { background:var(--danger); }
+.toast.success { background:var(--primary); }
+.toast.warn { background:var(--accent); }
+@keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* ===== Custom Marker ===== */
+.custom-marker { background:none !important; border:none !important; }
+.marker-icon { width:36px; height:36px; background:var(--primary); border:2px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer; transition:transform .2s; }
+.marker-icon:hover { transform:scale(1.15); }
+
+/* ===== Responsive ===== */
+.sidebar-toggle { position:absolute; top:16px; left:16px; z-index:999; width:42px; height:42px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; display:none; align-items:center; justify-content:center; font-size:16px; color:var(--text); box-shadow:0 2px 6px rgba(0,0,0,.08); }
+@media(max-width:768px) {
+  .sidebar { position:absolute; left:0; top:0; height:100vh; transform:translateX(-100%); transition:transform .3s; }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-toggle { display:flex; }
+  .map-prompt { bottom:20px; font-size:12px; padding:8px 18px; }
+  .form-drawer { width:100vw; }
+  .plot-grid { grid-template-columns:repeat(2,1fr); }
+  .sensor-bar { padding:8px; }
+  .sensor-card { min-width:80px; padding:6px 10px; }
+  .monitor-footer { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <i class="fas fa-seedling"></i>
+      <h1>城郊家庭农场平台</h1>
+    </div>
+    <div class="sidebar-body">
+      <!-- Search -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title"><i class="fas fa-search"></i> 搜索农场</div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="输入农场名称或地址..." />
+          <button onclick="searchFarms()"><i class="fas fa-search"></i></button>
+        </div>
+      </div>
+      <!-- Filter -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title"><i class="fas fa-filter"></i> 类型筛选</div>
+        <div class="filter-row" id="filterRow">
+          <div class="filter-tag active" data-type="all" onclick="setFilter('all')">全部</div>
+          <div class="filter-tag" data-type="种植" onclick="setFilter('种植')"><i class="fas fa-leaf"></i> 种植</div>
+          <div class="filter-tag" data-type="养殖" onclick="setFilter('养殖')"><i class="fas fa-horse"></i> 养殖</div>
+          <div class="filter-tag" data-type="综合" onclick="setFilter('综合')"><i class="fas fa-th-large"></i> 综合</div>
+        </div>
+      </div>
+      <!-- Stats -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title"><i class="fas fa-chart-bar"></i> 数据统计</div>
+        <div class="stats-row">
+          <div class="stat-item"><div class="num" id="totalCount">0</div><div class="label">农场总数</div></div>
+          <div class="stat-item"><div class="num" id="totalArea">0</div><div class="label">总面积(亩)</div></div>
+        </div>
+      </div>
+      <!-- Farm List -->
+      <div class="sidebar-section" style="border-bottom:none; flex:1;">
+        <div class="sidebar-section-title"><i class="fas fa-list"></i> 农场列表</div>
+        <div class="farm-list" id="farmList"></div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn-add" onclick="startAddFarm()"><i class="fas fa-plus"></i> 添加农场</button>
+      <button class="btn-export" onclick="exportData()"><i class="fas fa-download"></i> 导出</button>
+    </div>
+  </div>
+
+  <!-- Map Area -->
+  <div class="map-area">
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div id="map"></div>
+    <!-- Map toolbar -->
+    <div class="map-toolbar">
+      <button class="map-tool-btn" onclick="switchMapLayer('satellite')" title="卫星影像" id="btnSatellite"><i class="fas fa-satellite"></i></button>
+      <button class="map-tool-btn active" onclick="switchMapLayer('hybrid')" title="影像+标注" id="btnHybrid"><i class="fas fa-map"></i></button>
+      <button class="map-tool-btn" onclick="switchMapLayer('normal')" title="普通地图" id="btnNormal"><i class="fas fa-road"></i></button>
+      <button class="map-tool-btn" onclick="resetView()" title="复位视图"><i class="fas fa-crosshairs"></i></button>
+    </div>
+    <!-- Map prompt -->
+    <div class="map-prompt" id="mapPrompt"><i class="fas fa-hand-pointer"></i> 点击地图选取农场位置</div>
+  </div>
+</div>
+
+<!-- Form Drawer (fixed: right-side panel, map stays interactive) -->
+<div class="form-drawer" id="formDrawer">
+  <div class="form-drawer-header">
+    <h2><i class="fas fa-seedling"></i> <span id="formTitle">添加农场</span></h2>
+    <button class="form-drawer-close" onclick="closeForm()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="form-drawer-body">
+    <div class="form-group">
+      <label>定位坐标 <span class="required">（点击地图选取）</span></label>
+      <div class="coordinate-display" id="coordDisplayWrap">
+        <i class="fas fa-map-marker-alt"></i>
+        <span class="coords" id="coordDisplay">未选取</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>农场名称 <span class="required">*</span></label>
+      <input type="text" id="farmName" placeholder="例：阳光果蔬家庭农场" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>农场类型</label>
+        <select id="farmType">
+          <option value="种植">种植型</option>
+          <option value="养殖">养殖型</option>
+          <option value="综合">综合型</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>经营面积(亩)</label>
+        <input type="number" id="farmArea" placeholder="例：50" min="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>主要产品/品种</label>
+      <input type="text" id="farmProducts" placeholder="例：有机蔬菜、草莓、土鸡" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>联系人</label>
+        <input type="text" id="farmContact" placeholder="例：张三" />
+      </div>
+      <div class="form-group">
+        <label>联系电话</label>
+        <input type="text" id="farmPhone" placeholder="例：138xxxx0000" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>详细地址</label>
+      <input type="text" id="farmAddress" placeholder="例：XX区XX镇XX村" />
+    </div>
+    <div class="form-group">
+      <label>农场简介</label>
+      <textarea id="farmDesc" placeholder="简要描述农场特色、经营理念等..."></textarea>
+    </div>
+  </div>
+  <div class="form-drawer-footer">
+    <button class="btn-cancel" onclick="closeForm()">取消</button>
+    <button class="btn-save" onclick="saveFarm()">保存</button>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="title-area">
+        <h2 id="detailName">农场名称</h2>
+        <span class="type-badge" id="detailType">种植</span>
+      </div>
+      <button class="form-drawer-close" style="background:var(--bg);color:var(--text-light);" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+    <div class="detail-footer">
+      <button class="btn-monitor" onclick="openMonitoringFromDetail()"><i class="fas fa-chart-line"></i> 监控</button>
+      <button class="btn-edit" onclick="editFarmFromDetail()"><i class="fas fa-edit"></i> 编辑</button>
+      <button class="btn-del" onclick="deleteFarmFromDetail()"><i class="fas fa-trash"></i> 删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Lightbox -->
+<div class="photo-lightbox" id="photoLightbox">
+  <button class="lightbox-close" onclick="closeLightbox()"><i class="fas fa-times"></i></button>
+  <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation();navigateLightbox(-1)"><i class="fas fa-chevron-left"></i></button>
+  <img id="lightboxImg" src="" alt="照片" />
+  <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation();navigateLightbox(1)"><i class="fas fa-chevron-right"></i></button>
+</div>
+
+<!-- Camera Modal -->
+<div class="camera-overlay" id="cameraOverlay">
+  <div class="camera-container">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas class="camera-canvas" id="cameraCanvas"></canvas>
+  </div>
+  <div class="camera-controls">
+    <button class="camera-btn close-cam" onclick="closeCamera()" title="关闭"><i class="fas fa-times" style="color:#fff;font-size:20px;"></i></button>
+    <button class="camera-btn capture" onclick="capturePhoto()" title="拍照"></button>
+    <button class="camera-btn" onclick="switchCamera()" title="切换摄像头" id="switchCamBtn" style="display:none;"><i class="fas fa-sync-alt" style="color:#fff;font-size:20px;"></i></button>
+  </div>
+  <div class="camera-hint">点击中间按钮拍照 | 点击 ✕ 关闭</div>
+</div>
+
+<!-- Monitoring View -->
+<div class="monitor-overlay" id="monitorOverlay">
+  <div class="monitor-view" id="monitorView">
+    <div class="monitor-header">
+      <div class="monitor-title">
+        <span class="monitor-farm-icon">🌱</span>
+        <span id="monitorFarmName">农场名称</span>
+        <span class="monitor-live-badge">● LIVE</span>
+      </div>
+      <button class="monitor-close" onclick="closeMonitoring()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="sensor-bar" id="sensorBar"></div>
+    <div class="plot-grid" id="plotGrid"></div>
+    <div class="monitor-footer">
+      <div class="harvest-count" id="monitorStats">
+        <span class="trophy">🏆</span>
+        <span>累计收获: </span>
+        <span id="harvestCount">0</span>
+      </div>
+      <div class="monitor-actions" id="monitorActions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Plant Selection Modal -->
+<div class="plant-modal" id="plantModal">
+  <div class="plant-modal-content">
+    <h3 id="plantModalTitle"><i class="fas fa-seedling"></i> 选择要种植的蔬菜</h3>
+    <div class="veg-grid" id="vegGrid"></div>
+    <button class="plant-modal-cancel" onclick="closePlantModal()">取消</button>
+  </div>
+</div>
+
+<!-- Hidden file inputs for photos -->
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)" />
+<input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)" />
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ===== Vegetable Types =====
+const VEG_TYPES = {
+  tomato:     { name:'番茄',   stages:['🌱','🌿','🌸','🍅'], growTime:60 },
+  cabbage:    { name:'白菜',   stages:['🌱','🌿','🥬'],      growTime:45 },
+  carrot:     { name:'胡萝卜', stages:['🌱','🌿','🥕'],      growTime:50 },
+  corn:       { name:'玉米',   stages:['🌱','🌿','🌸','🌽'], growTime:70 },
+  strawberry: { name:'草莓',   stages:['🌱','🌿','🌸','🍓'], growTime:55 },
+  cucumber:   { name:'黄瓜',   stages:['🌱','🌿','🌸','🥒'], growTime:55 },
+  pepper:     { name:'辣椒',   stages:['🌱','🌿','🌸','🌶️'], growTime:60 },
+  eggplant:   { name:'茄子',   stages:['🌱','🌿','🌸','🍆'], growTime:65 },
+  potato:     { name:'土豆',   stages:['🌱','🌿','🥔'],      growTime:50 },
+  pumpkin:    { name:'南瓜',   stages:['🌱','🌿','🌸','🎃'], growTime:75 },
+};
+
+// ===== Animal Types (for livestock farms) =====
+const ANIMAL_TYPES = {
+  chicken: { name:'土鸡',   stages:['🥚','🐣','🐤','🐔'], growTime:60 },
+  pig:     { name:'生态猪', stages:['🐷','🐖'],           growTime:100 },
+  cow:     { name:'黄牛',   stages:['🐂','🐄'],           growTime:150 },
+  sheep:   { name:'绵羊',   stages:['🐑','🐏'],           growTime:90 },
+  duck:    { name:'鸭子',   stages:['🥚','🐣','🦆'],      growTime:55 },
+  fish:    { name:'鱼',     stages:['🐟','🐡'],           growTime:70 },
+  rabbit:  { name:'兔子',   stages:['🐰'],                growTime:45 },
+  goat:    { name:'山羊',   stages:['🐐'],                growTime:100 },
+};
+
+// ===== Data Store =====
+let farms = JSON.parse(localStorage.getItem('farms') || '[]');
+let currentFilter = 'all';
+let searchKeyword = '';
+let editingFarmId = null;
+let isAddingFarm = false;
+let tempLatLng = null;
+let markers = {};
+let activeFarmId = null;
+let lightboxPhotos = [];
+let lightboxIndex = 0;
+let monitoringFarmId = null;
+let monitoringInterval = null;
+let growthInterval = null;
+let plantingPlotId = null;
+
+// ===== Demo Data =====
+if (farms.length === 0) {
+  farms = [
+    { id: genId(), name:'阳光果蔬家庭农场', type:'种植', area:45, products:'有机蔬菜、草莓、蓝莓', contact:'张建国', phone:'13812345001', address:'海淀区上庄镇西闸村', desc:'专注有机蔬菜种植，采用生态农耕方式，不使用化肥农药。草莓采摘季每年3-5月开放。', lat:39.96, lng:116.18, photos:[] },
+    { id: genId(), name:'青山牧歌养殖场', type:'养殖', area:80, products:'散养土鸡、土鸡蛋、生态猪', contact:'李大伟', phone:'13912345002', address:'昌平区南口镇燕磨石村', desc:'山地散养土鸡和生态猪，饲料全部为天然谷物和山间虫草，保证产品绿色健康。', lat:40.22, lng:116.07, photos:[] },
+    { id: genId(), name:'田园综合体', type:'综合', area:120, products:'有机蔬果、民宿体验、亲子农事', contact:'王芳', phone:'13612345003', address:'大兴区庞各庄镇南李渠村', desc:'集种植、养殖、民宿于一体的综合农场，提供亲子农事体验和周末休闲服务，西瓜节每年6月举办。', lat:39.62, lng:116.33, photos:[] },
+    { id: genId(), name:'稻香米业家庭农场', type:'种植', area:200, products:'有机水稻、稻田鱼', contact:'赵文田', phone:'13712345004', address:'房山区长阳镇稻田村', desc:'采用稻鱼共生模式，水稻与鱼互养互促，产出高品质有机大米。', lat:39.75, lng:116.20, photos:[] },
+    { id: genId(), name:'百花谷花卉农场', type:'种植', area:30, products:'玫瑰、薰衣草、鲜花精油', contact:'刘梦', phone:'13512345005', address:'门头沟区妙峰山镇涧沟村', desc:'高山花卉种植，以玫瑰和薰衣草为主，自制鲜花精油和花茶，每年花期对外开放参观。', lat:39.93, lng:116.01, photos:[] }
+  ];
+  saveToStorage();
+}
+
+function genId() { return 'f' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function saveToStorage() { localStorage.setItem('farms', JSON.stringify(farms)); }
+
+// ===== Map Init =====
+const map = L.map('map', { center:[39.92,116.38], zoom:9, zoomControl:true, attributionControl:false });
+const amapSubdomains = ['1','2','3','4'];
+const normalLayer = L.tileLayer('http://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', { maxZoom:18, subdomains:amapSubdomains });
+const satelliteLayer = L.tileLayer('http://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom:18, subdomains:amapSubdomains });
+const labelLayer = L.tileLayer('http://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}', { maxZoom:18, subdomains:amapSubdomains });
+satelliteLayer.addTo(map);
+labelLayer.addTo(map);
+let currentLayer = 'hybrid';
+
+function switchMapLayer(type) {
+  map.removeLayer(normalLayer); map.removeLayer(satelliteLayer); map.removeLayer(labelLayer);
+  document.getElementById('btnNormal').classList.toggle('active', type==='normal');
+  document.getElementById('btnSatellite').classList.toggle('active', type==='satellite');
+  document.getElementById('btnHybrid').classList.toggle('active', type==='hybrid');
+  if (type==='normal') normalLayer.addTo(map);
+  else if (type==='satellite') satelliteLayer.addTo(map);
+  else { satelliteLayer.addTo(map); labelLayer.addTo(map); }
+  currentLayer = type;
+}
+function resetView() { map.setView([39.92,116.38], 9); }
+
+// ===== Map Click =====
+map.on('click', function(e) {
+  if (isAddingFarm) {
+    tempLatLng = e.latlng;
+    document.getElementById('coordDisplay').textContent = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+    document.getElementById('coordDisplayWrap').classList.add('has-coord');
+    if (window._tempMarker) map.removeLayer(window._tempMarker);
+    window._tempMarker = L.marker(e.latlng, {
+      icon: L.divIcon({ className:'custom-marker', html:'<div class="marker-icon" style="background:#ff9800;"><i class="fas fa-map-pin"></i></div>', iconSize:[36,36], iconAnchor:[18,18] })
+    }).addTo(map);
+  }
+});
+
+// ===== Render =====
+function renderAll() { renderMarkers(); renderList(); updateStats(); }
+
+function renderMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  farms.forEach(farm => {
+    if (!farm.lat || !farm.lng) return;
+    const iconColor = farm.type==='种植' ? '#2e7d32' : farm.type==='养殖' ? '#1565c0' : '#ff9800';
+    const iconSymbol = farm.type==='种植' ? 'fa-leaf' : farm.type==='养殖' ? 'fa-horse' : 'fa-th-large';
+    const marker = L.marker([farm.lat, farm.lng], {
+      icon: L.divIcon({ className:'custom-marker', html:'<div class="marker-icon" style="background:'+iconColor+';"><i class="fas '+iconSymbol+'"></i></div>', iconSize:[36,36], iconAnchor:[18,18] })
+    }).addTo(map);
+    marker.on('click', () => showDetail(farm.id));
+    markers[farm.id] = marker;
+  });
+}
+
+function renderList() {
+  const list = document.getElementById('farmList');
+  let filtered = farms;
+  if (currentFilter !== 'all') filtered = filtered.filter(f => f.type === currentFilter);
+  if (searchKeyword) {
+    const kw = searchKeyword.toLowerCase();
+    filtered = filtered.filter(f => f.name.toLowerCase().includes(kw) || (f.address && f.address.toLowerCase().includes(kw)));
+  }
+  if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">暂无农场数据</div>'; return; }
+  list.innerHTML = filtered.map(farm => {
+    const iconColor = farm.type==='种植' ? '#2e7d32' : farm.type==='养殖' ? '#1565c0' : '#ff9800';
+    const iconSymbol = farm.type==='种植' ? 'fa-leaf' : farm.type==='养殖' ? 'fa-horse' : 'fa-th-large';
+    const isActive = activeFarmId === farm.id;
+    const photoCount = (farm.photos || []).length;
+    return '<div class="farm-card '+(isActive?'active':'')+'" onclick="focusFarm(\''+farm.id+'\')">'+
+      '<div class="icon" style="background:'+iconColor+'"><i class="fas '+iconSymbol+'"></i></div>'+
+      '<div class="info"><div class="name">'+farm.name+(photoCount>0?' <span class="monitor-badge">📷'+photoCount+'</span>':'')+'</div>'+
+      '<div class="desc">'+farm.type+' · '+(farm.area||'-')+'亩 · '+(farm.products||'-')+'</div></div>'+
+      '<div class="actions">'+
+        '<button onclick="event.stopPropagation();showDetail(\''+farm.id+'\')" title="详情"><i class="fas fa-eye"></i></button>'+
+        '<button onclick="event.stopPropagation();openMonitoring(\''+farm.id+'\')" title="监控"><i class="fas fa-chart-line"></i></button>'+
+        '<button onclick="event.stopPropagation();editFarm(\''+farm.id+'\')" title="编辑"><i class="fas fa-edit"></i></button>'+
+        '<button class="del" onclick="event.stopPropagation();deleteFarm(\''+farm.id+'\')" title="删除"><i class="fas fa-trash"></i></button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('totalCount').textContent = farms.length;
+  document.getElementById('totalArea').textContent = farms.reduce((s,f) => s + (Number(f.area)||0), 0);
+}
+
+// ===== Actions =====
+function focusFarm(id) {
+  const farm = farms.find(f => f.id === id);
+  if (!farm || !farm.lat) return;
+  activeFarmId = id;
+  map.setView([farm.lat, farm.lng], 14, { animate:true });
+  renderList();
+  if (markers[id]) {
+    const el = markers[id].getElement();
+    if (el) el.querySelector('.marker-icon').style.transform = 'scale(1.3)';
+    setTimeout(() => { if (el) el.querySelector('.marker-icon').style.transform = ''; }, 400);
+  }
+}
+
+function searchFarms() { searchKeyword = document.getElementById('searchInput').value.trim(); renderList(); }
+document.getElementById('searchInput').addEventListener('keyup', function(e) {
+  if (e.key === 'Enter') searchFarms();
+  if (!this.value.trim()) { searchKeyword = ''; renderList(); }
+});
+function setFilter(type) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-tag').forEach(el => el.classList.toggle('active', el.dataset.type === type));
+  renderList();
+}
+
+// ===== Add Farm (fixed: uses right-side drawer, map stays interactive) =====
+function startAddFarm() {
+  editingFarmId = null;
+  isAddingFarm = true;
+  tempLatLng = null;
+  if (window._tempMarker) { map.removeLayer(window._tempMarker); window._tempMarker = null; }
+  document.getElementById('formTitle').textContent = '添加农场';
+  document.getElementById('coordDisplay').textContent = '未选取';
+  document.getElementById('coordDisplayWrap').classList.remove('has-coord');
+  document.getElementById('farmName').value = '';
+  document.getElementById('farmType').value = '种植';
+  document.getElementById('farmArea').value = '';
+  document.getElementById('farmProducts').value = '';
+  document.getElementById('farmContact').value = '';
+  document.getElementById('farmPhone').value = '';
+  document.getElementById('farmAddress').value = '';
+  document.getElementById('farmDesc').value = '';
+  document.getElementById('formDrawer').classList.add('show');
+  document.getElementById('mapPrompt').classList.add('show');
+}
+
+function closeForm() {
+  document.getElementById('formDrawer').classList.remove('show');
+  document.getElementById('mapPrompt').classList.remove('show');
+  isAddingFarm = false;
+  if (window._tempMarker) { map.removeLayer(window._tempMarker); window._tempMarker = null; }
+}
+
+function saveFarm() {
+  const name = document.getElementById('farmName').value.trim();
+  if (!name) { showToast('请输入农场名称', 'error'); return; }
+  const data = {
+    name, type:document.getElementById('farmType').value,
+    area:Number(document.getElementById('farmArea').value)||0,
+    products:document.getElementById('farmProducts').value.trim(),
+    contact:document.getElementById('farmContact').value.trim(),
+    phone:document.getElementById('farmPhone').value.trim(),
+    address:document.getElementById('farmAddress').value.trim(),
+    desc:document.getElementById('farmDesc').value.trim(),
+  };
+  if (editingFarmId) {
+    const idx = farms.findIndex(f => f.id === editingFarmId);
+    if (idx >= 0) {
+      if (tempLatLng) { data.lat = tempLatLng.lat; data.lng = tempLatLng.lng; }
+      else { data.lat = farms[idx].lat; data.lng = farms[idx].lng; }
+      data.photos = farms[idx].photos || [];
+      data.monitoring = farms[idx].monitoring || null;
+      farms[idx] = { ...farms[idx], ...data };
+      showToast('农场信息已更新', 'success');
+    }
+  } else {
+    if (!tempLatLng) { showToast('请在地图上点击选取农场位置', 'warn'); return; }
+    data.id = genId();
+    data.lat = tempLatLng.lat; data.lng = tempLatLng.lng;
+    data.photos = [];
+    farms.push(data);
+    showToast('农场已添加', 'success');
+  }
+  saveToStorage();
+  closeForm();
+  renderAll();
+}
+
+// ===== Edit Farm =====
+function editFarm(id) {
+  const farm = farms.find(f => f.id === id);
+  if (!farm) return;
+  editingFarmId = id;
+  isAddingFarm = true;
+  tempLatLng = farm.lat ? L.latLng(farm.lat, farm.lng) : null;
+  document.getElementById('formTitle').textContent = '编辑农场';
+  document.getElementById('coordDisplay').textContent = farm.lat ? farm.lat.toFixed(6)+', '+farm.lng.toFixed(6) : '未选取';
+  if (farm.lat) document.getElementById('coordDisplayWrap').classList.add('has-coord');
+  else document.getElementById('coordDisplayWrap').classList.remove('has-coord');
+  document.getElementById('farmName').value = farm.name || '';
+  document.getElementById('farmType').value = farm.type || '种植';
+  document.getElementById('farmArea').value = farm.area || '';
+  document.getElementById('farmProducts').value = farm.products || '';
+  document.getElementById('farmContact').value = farm.contact || '';
+  document.getElementById('farmPhone').value = farm.phone || '';
+  document.getElementById('farmAddress').value = farm.address || '';
+  document.getElementById('farmDesc').value = farm.desc || '';
+  document.getElementById('formDrawer').classList.add('show');
+  document.getElementById('mapPrompt').classList.add('show');
+}
+
+// ===== Show Detail =====
+function showDetail(id) {
+  const farm = farms.find(f => f.id === id);
+  if (!farm) return;
+  activeFarmId = id;
+  document.getElementById('detailName').textContent = farm.name;
+  document.getElementById('detailType').textContent = farm.type;
+  document.getElementById('detailType').style.background = farm.type==='种植' ? '#2e7d32' : farm.type==='养殖' ? '#1565c0' : '#ff9800';
+
+  const rows = [
+    ['经营面积', farm.area ? farm.area+' 亩' : '-'],
+    ['主要产品', farm.products || '-'],
+    ['联系人', farm.contact || '-'],
+    ['联系电话', farm.phone || '-'],
+    ['详细地址', farm.address || '-'],
+    ['经纬度', farm.lat ? farm.lat.toFixed(6)+', '+farm.lng.toFixed(6) : '-'],
+    ['农场简介', farm.desc || '-'],
+  ];
+  let html = rows.map(r => '<div class="detail-row"><div class="dt">'+r[0]+'</div><div class="dd">'+r[1]+'</div></div>').join('');
+
+  // Photo section
+  const photos = farm.photos || [];
+  html += '<div class="photo-section">'+
+    '<div class="photo-section-title"><i class="fas fa-camera"></i> 现场照片 ('+photos.length+'/12)</div>'+
+    '<div class="photo-grid" id="photoGrid">'+renderPhotoGrid(photos)+'</div>'+
+    '<div class="photo-actions">'+
+      '<button class="btn-photo" onclick="openCamera()"><i class="fas fa-camera"></i> 拍照</button>'+
+      '<button class="btn-photo" onclick="openFilePicker()"><i class="fas fa-upload"></i> 上传</button>'+
+    '</div></div>';
+
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('show');
+  renderList();
+}
+
+function renderPhotoGrid(photos) {
+  let html = photos.map((p, i) =>
+    '<div class="photo-thumb" onclick="openLightbox('+i+')">'+
+    '<img src="'+p+'" alt="照片'+(i+1)+'" />'+
+    '<button class="photo-del" onclick="event.stopPropagation();deletePhoto('+i+')"><i class="fas fa-times"></i></button>'+
+    '</div>'
+  ).join('');
+  if (photos.length < 12) {
+    html += '<div class="photo-empty" onclick="openFilePicker()"><i class="fas fa-plus"></i></div>';
+  }
+  return html;
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('show');
+  activeFarmId = null;
+  renderList();
+}
+function editFarmFromDetail() {
+  const id = activeFarmId;
+  closeDetail();
+  editFarm(id);
+}
+function deleteFarmFromDetail() {
+  if (!activeFarmId) return;
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm) return;
+  if (confirm('确认删除「'+farm.name+'」？此操作不可恢复。')) {
+    farms = farms.filter(f => f.id !== activeFarmId);
+    saveToStorage();
+    closeDetail();
+    renderAll();
+    showToast('农场已删除', 'success');
+  }
+}
+function deleteFarm(id) {
+  const farm = farms.find(f => f.id === id);
+  if (!farm) return;
+  if (confirm('确认删除「'+farm.name+'」？')) {
+    farms = farms.filter(f => f.id !== id);
+    saveToStorage();
+    renderAll();
+    showToast('农场已删除', 'success');
+  }
+}
+
+// ===== Photo Functions =====
+let cameraStream = null;
+let cameraFacingMode = 'environment';
+
+function openCamera() {
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm) { showToast('请先选择农场', 'error'); return; }
+  if ((farm.photos || []).length >= 12) { showToast('最多只能上传12张照片', 'warn'); return; }
+  startCamera();
+}
+
+function startCamera() {
+  const overlay = document.getElementById('cameraOverlay');
+  const video = document.getElementById('cameraVideo');
+  overlay.classList.add('show');
+  stopCameraStream();
+  const constraints = { video: { facingMode: cameraFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+  navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+    cameraStream = stream;
+    video.srcObject = stream;
+    video.play();
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      const count = devices.filter(d => d.kind === 'videoinput').length;
+      document.getElementById('switchCamBtn').style.display = count > 1 ? 'flex' : 'none';
+    });
+  }).catch(err => {
+    console.error('Camera error:', err);
+    overlay.classList.remove('show');
+    document.getElementById('cameraInput').click();
+  });
+}
+
+function stopCameraStream() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+}
+
+function closeCamera() {
+  stopCameraStream();
+  document.getElementById('cameraOverlay').classList.remove('show');
+}
+
+function switchCamera() {
+  cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+  startCamera();
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm) { closeCamera(); return; }
+  if (!farm.photos) farm.photos = [];
+  compressImage(dataUrl, 800, 0.7, function(compressed) {
+    farm.photos.push(compressed);
+    saveToStorage();
+    closeCamera();
+    showDetail(farm.id);
+    showToast('照片已保存', 'success');
+  });
+}
+
+function openFilePicker() { document.getElementById('fileInput').click(); }
+
+function handlePhotoSelect(e) {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm) { showToast('请先选择农场', 'error'); return; }
+  if (!farm.photos) farm.photos = [];
+  let remaining = 12 - farm.photos.length;
+  if (remaining <= 0) { showToast('最多只能上传12张照片', 'warn'); e.target.value=''; return; }
+
+  const fileList = Array.from(files).slice(0, remaining);
+  let processed = 0;
+  fileList.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      compressImage(ev.target.result, 800, 0.7, function(compressed) {
+        farm.photos.push(compressed);
+        processed++;
+        if (processed === fileList.length) {
+          saveToStorage();
+          showDetail(farm.id);
+          showToast('照片已保存 ('+fileList.length+'张)', 'success');
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function compressImage(dataUrl, maxWidth, quality, callback) {
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src = dataUrl;
+}
+
+function deletePhoto(index) {
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm || !farm.photos) return;
+  farm.photos.splice(index, 1);
+  saveToStorage();
+  showDetail(farm.id);
+  showToast('照片已删除', 'success');
+}
+
+function openLightbox(index) {
+  const farm = farms.find(f => f.id === activeFarmId);
+  if (!farm || !farm.photos) return;
+  lightboxPhotos = farm.photos;
+  lightboxIndex = index;
+  document.getElementById('lightboxImg').src = lightboxPhotos[index];
+  document.getElementById('photoLightbox').classList.add('show');
+}
+function closeLightbox() { document.getElementById('photoLightbox').classList.remove('show'); }
+function navigateLightbox(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxPhotos.length) % lightboxPhotos.length;
+  document.getElementById('lightboxImg').src = lightboxPhotos[lightboxIndex];
+}
+document.getElementById('photoLightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
+
+// ===== Monitoring Functions =====
+function getMonitorType(farm) {
+  if (farm.type === '养殖') return 'livestock';
+  if (farm.type === '综合') return 'mixed';
+  return 'crop';
+}
+
+function initMonitoringData(farm) {
+  const monType = getMonitorType(farm);
+  // 如果已有监控数据但类型不匹配（例如原先全是蔬菜数据、现在农场是养殖型），需重新初始化
+  if (farm.monitoring && farm.monitoring._monType === monType) return farm.monitoring;
+  const plots = [];
+
+  if (monType === 'livestock') {
+    const animalKeys = Object.keys(ANIMAL_TYPES);
+    for (let i = 0; i < 8; i++) {
+      if (Math.random() > 0.2) {
+        plots.push({ id:i, category:'animal', type:animalKeys[Math.floor(Math.random()*animalKeys.length)], progress:Math.random()*90, health:60+Math.random()*40, feed:40+Math.random()*50, water:40+Math.random()*50 });
+      } else {
+        plots.push({ id:i, category:'animal', type:null, progress:0, health:100, feed:0, water:0 });
+      }
+    }
+    farm.monitoring = { _monType:'livestock', sensors:{ temp:18+Math.random()*15, humidity:50+Math.random()*30, ammonia:5+Math.random()*15, feedLevel:50+Math.random()*40, waterLevel:50+Math.random()*40, noise:40+Math.random()*30, ventilation:60+Math.random()*30 }, plots:plots, harvest:Math.floor(Math.random()*20), lastUpdate:Date.now() };
+  } else if (monType === 'mixed') {
+    const vegKeys = Object.keys(VEG_TYPES);
+    const animalKeys = Object.keys(ANIMAL_TYPES);
+    for (let i = 0; i < 4; i++) {
+      if (Math.random() > 0.25) {
+        plots.push({ id:i, category:'crop', type:vegKeys[Math.floor(Math.random()*vegKeys.length)], progress:Math.random()*90, health:60+Math.random()*40, moisture:40+Math.random()*50 });
+      } else {
+        plots.push({ id:i, category:'crop', type:null, progress:0, health:100, moisture:30+Math.random()*30 });
+      }
+    }
+    for (let i = 4; i < 8; i++) {
+      if (Math.random() > 0.2) {
+        plots.push({ id:i, category:'animal', type:animalKeys[Math.floor(Math.random()*animalKeys.length)], progress:Math.random()*90, health:60+Math.random()*40, feed:40+Math.random()*50, water:40+Math.random()*50 });
+      } else {
+        plots.push({ id:i, category:'animal', type:null, progress:0, health:100, feed:0, water:0 });
+      }
+    }
+    farm.monitoring = { _monType:'mixed', sensors:{ temp:20+Math.random()*15, humidity:40+Math.random()*40, soilMoisture:40+Math.random()*40, light:50+Math.random()*50, ammonia:5+Math.random()*15, feedLevel:50+Math.random()*40, waterLevel:50+Math.random()*40, co2:350+Math.random()*200 }, plots:plots, harvest:Math.floor(Math.random()*18), lastUpdate:Date.now() };
+  } else {
+    const vegKeys = Object.keys(VEG_TYPES);
+    for (let i = 0; i < 8; i++) {
+      if (Math.random() > 0.25) {
+        plots.push({ id:i, category:'crop', type:vegKeys[Math.floor(Math.random()*vegKeys.length)], progress:Math.random()*90, health:60+Math.random()*40, moisture:40+Math.random()*50 });
+      } else {
+        plots.push({ id:i, category:'crop', type:null, progress:0, health:100, moisture:30+Math.random()*30 });
+      }
+    }
+    farm.monitoring = { _monType:'crop', sensors:{ temp:20+Math.random()*15, humidity:40+Math.random()*40, soilMoisture:40+Math.random()*40, light:50+Math.random()*50, ph:6.0+Math.random()*1.5, co2:350+Math.random()*200, wind:Math.random()*8 }, plots:plots, harvest:Math.floor(Math.random()*15), lastUpdate:Date.now() };
+  }
+  return farm.monitoring;
+}
+
+function openMonitoring(id) {
+  const farm = farms.find(f => f.id === id);
+  if (!farm) return;
+  monitoringFarmId = id;
+  initMonitoringData(farm);
+  document.getElementById('monitorFarmName').textContent = farm.name;
+  document.getElementById('monitorOverlay').classList.add('show');
+  renderMonitoring();
+  monitoringInterval = setInterval(updateSensors, 3000);
+  growthInterval = setInterval(updateGrowth, 5000);
+}
+
+function openMonitoringFromDetail() {
+  const id = activeFarmId;
+  closeDetail();
+  openMonitoring(id);
+}
+
+function closeMonitoring() {
+  document.getElementById('monitorOverlay').classList.remove('show');
+  if (monitoringInterval) { clearInterval(monitoringInterval); monitoringInterval = null; }
+  if (growthInterval) { clearInterval(growthInterval); growthInterval = null; }
+  if (monitoringFarmId) { saveToStorage(); monitoringFarmId = null; }
+}
+
+function getGrowthStage(progress, stageCount) {
+  if (progress >= 100) return stageCount - 1;
+  return Math.min(stageCount - 1, Math.floor((progress / 100) * stageCount));
+}
+
+function renderMonitoring() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm || !farm.monitoring) return;
+  const m = farm.monitoring;
+  const monType = getMonitorType(farm);
+
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour >= 19;
+  document.getElementById('monitorView').classList.toggle('night', isNight);
+
+  // ---- Sensors ----
+  let sensorConfigs;
+  if (monType === 'livestock') {
+    sensorConfigs = [
+      { key:'temp', icon:'🌡️', label:'气温', unit:'°C', min:10, max:32 },
+      { key:'humidity', icon:'💨', label:'湿度', unit:'%', min:40, max:85 },
+      { key:'ammonia', icon:'🧪', label:'氨气', unit:'ppm', min:0, max:20 },
+      { key:'feedLevel', icon:'🍖', label:'饲料余量', unit:'%', min:20, max:100 },
+      { key:'waterLevel', icon:'🚰', label:'饮水余量', unit:'%', min:20, max:100 },
+      { key:'noise', icon:'🔊', label:'噪音', unit:'dB', min:30, max:70 },
+      { key:'ventilation', icon:'🌬️', label:'通风', unit:'%', min:40, max:100 },
+    ];
+  } else if (monType === 'mixed') {
+    sensorConfigs = [
+      { key:'temp', icon:'🌡️', label:'气温', unit:'°C', min:15, max:35 },
+      { key:'humidity', icon:'💨', label:'湿度', unit:'%', min:40, max:90 },
+      { key:'soilMoisture', icon:'🪴', label:'土壤水分', unit:'%', min:30, max:80 },
+      { key:'light', icon:'☀️', label:'光照', unit:'%', min:0, max:100 },
+      { key:'ammonia', icon:'🧪', label:'氨气', unit:'ppm', min:0, max:20 },
+      { key:'feedLevel', icon:'🍖', label:'饲料余量', unit:'%', min:20, max:100 },
+      { key:'waterLevel', icon:'🚰', label:'饮水余量', unit:'%', min:20, max:100 },
+    ];
+  } else {
+    sensorConfigs = [
+      { key:'temp', icon:'🌡️', label:'气温', unit:'°C', min:15, max:35 },
+      { key:'humidity', icon:'💨', label:'湿度', unit:'%', min:40, max:90 },
+      { key:'soilMoisture', icon:'🪴', label:'土壤水分', unit:'%', min:30, max:80 },
+      { key:'light', icon:'☀️', label:'光照', unit:'%', min:0, max:100 },
+      { key:'ph', icon:'⚗️', label:'土壤pH', unit:'', min:5.5, max:7.5 },
+      { key:'co2', icon:'🌫️', label:'CO₂', unit:'ppm', min:350, max:600 },
+      { key:'wind', icon:'🌬️', label:'风速', unit:'m/s', min:0, max:10 },
+    ];
+  }
+  document.getElementById('sensorBar').innerHTML = sensorConfigs.map(s => {
+    const val = m.sensors[s.key] || 0;
+    const cls = (val < s.min || val > s.max) ? 'alert' : 'good';
+    return '<div class="sensor-card '+cls+'"><span class="sensor-icon">'+s.icon+'</span><div><div class="sensor-val">'+(typeof val==='number'?val.toFixed(s.key==='ph'?1:0):val)+'<span class="sensor-unit">'+s.unit+'</span></div><div class="sensor-label">'+s.label+'</div></div></div>';
+  }).join('') + '<div class="sensor-card" style="background:rgba(76,175,80,.9);color:#fff;"><span class="sensor-icon">📡</span><div><div class="sensor-val" style="font-size:14px;">在线</div><div class="sensor-label">采集点状态</div></div></div>';
+
+  // ---- Tiles ----
+  document.getElementById('plotGrid').innerHTML = m.plots.map(plot => {
+    if (plot.category === 'animal') return renderAnimalPen(plot);
+    return renderCropTile(plot);
+  }).join('');
+
+  // ---- Footer ----
+  let actionsHtml = '';
+  let statsHtml = '';
+  if (monType === 'crop') {
+    actionsHtml = '<button class="mon-btn water" onclick="waterAll()"><i class="fas fa-tint"></i> 全部浇水</button>'+
+      '<button class="mon-btn fertilize" onclick="fertilizeAll()"><i class="fas fa-flask"></i> 施肥</button>'+
+      '<button class="mon-btn harvest" onclick="harvestAll()"><i class="fas fa-hand-paper"></i> 全部收割</button>'+
+      '<button class="mon-btn plant" onclick="plantAllEmpty()"><i class="fas fa-seedling"></i> 全部种植</button>';
+    statsHtml = '<span class="trophy">🏆</span><span>累计收割: </span><span id="harvestCount">'+m.harvest+'</span><span style="margin-left:12px;">🌱</span><span>种植中: </span><span id="plantingCount">'+m.plots.filter(p=>p.type).length+'</span>';
+  } else if (monType === 'livestock') {
+    actionsHtml = '<button class="mon-btn water" onclick="waterAll()"><i class="fas fa-tint"></i> 全部喂水</button>'+
+      '<button class="mon-btn fertilize" style="background:#E65100;" onclick="feedAll()"><i class="fas fa-drumstick-bite"></i> 全部喂食</button>'+
+      '<button class="mon-btn fertilize" style="background:#00897B;" onclick="vaccinateAll()"><i class="fas fa-syringe"></i> 防疫检查</button>'+
+      '<button class="mon-btn harvest" onclick="harvestAll()"><i class="fas fa-truck"></i> 全部出栏</button>'+
+      '<button class="mon-btn plant" onclick="plantAllEmpty()"><i class="fas fa-plus-circle"></i> 全部补栏</button>';
+    statsHtml = '<span class="trophy">🏆</span><span>累计出栏: </span><span id="harvestCount">'+m.harvest+'</span><span style="margin-left:12px;">🐔</span><span>存栏数: </span><span id="plantingCount">'+m.plots.filter(p=>p.type).length+'</span>';
+  } else {
+    actionsHtml = '<button class="mon-btn water" onclick="waterAll()"><i class="fas fa-tint"></i> 浇水/喂水</button>'+
+      '<button class="mon-btn fertilize" style="background:#E65100;" onclick="feedAll()"><i class="fas fa-drumstick-bite"></i> 喂食</button>'+
+      '<button class="mon-btn fertilize" onclick="fertilizeAll()"><i class="fas fa-flask"></i> 施肥</button>'+
+      '<button class="mon-btn fertilize" style="background:#00897B;" onclick="vaccinateAll()"><i class="fas fa-syringe"></i> 防疫</button>'+
+      '<button class="mon-btn harvest" onclick="harvestAll()"><i class="fas fa-hand-paper"></i> 全部收获</button>'+
+      '<button class="mon-btn plant" onclick="plantAllEmpty()"><i class="fas fa-seedling"></i> 种植/补栏</button>';
+    statsHtml = '<span class="trophy">🏆</span><span>累计收获: </span><span id="harvestCount">'+m.harvest+'</span><span style="margin-left:12px;">📦</span><span>在养在种: </span><span id="plantingCount">'+m.plots.filter(p=>p.type).length+'</span>';
+  }
+  document.getElementById('monitorStats').innerHTML = statsHtml;
+  document.getElementById('monitorActions').innerHTML = actionsHtml;
+}
+
+function renderCropTile(plot) {
+  if (!plot.type) {
+    return '<div class="plot-tile empty" onclick="showPlantMenu('+plot.id+')"><div class="plot-veg">➕</div><div class="plot-label">'+(plot.id+1)+'号地 · 空地</div><div class="plot-actions"><button onclick="event.stopPropagation();showPlantMenu('+plot.id+')" title="种植">🌱</button></div></div>';
+  }
+  const veg = VEG_TYPES[plot.type];
+  const stage = getGrowthStage(plot.progress, veg.stages.length);
+  const emoji = veg.stages[stage];
+  const isMature = plot.progress >= 100;
+  const healthEmoji = plot.health>80?'😊':plot.health>50?'😐':plot.health>20?'😟':'😫';
+  const moistureClass = plot.moisture>70?'wet':plot.moisture<30?'dry':'';
+  const moistureEmoji = plot.moisture>60?'💧':plot.moisture>30?'💦':'🥵';
+  return '<div class="plot-tile '+moistureClass+(isMature?' mature':'')+'"><div class="plot-veg">'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+moistureEmoji+' '+Math.round(plot.moisture)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号地 · '+veg.name+'</div>'+(isMature?'<div class="plot-badge">可收割</div>':'')+'<div class="plot-actions"><button onclick="waterPlot('+plot.id+')" title="浇水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="收割">🌾</button>':'')+'</div></div>';
+}
+
+function renderAnimalPen(plot) {
+  if (!plot.type) {
+    return '<div class="pen-tile empty" onclick="showPlantMenu('+plot.id+')"><div class="pen-veg">➕</div><div class="plot-label">'+(plot.id+1)+'号栏 · 空栏</div><div class="plot-actions"><button onclick="event.stopPropagation();showPlantMenu('+plot.id+')" title="补栏">➕</button></div></div>';
+  }
+  const animal = ANIMAL_TYPES[plot.type];
+  const stage = getGrowthStage(plot.progress, animal.stages.length);
+  const emoji = animal.stages[stage];
+  const isMature = plot.progress >= 100;
+  const healthEmoji = plot.health>80?'😊':plot.health>50?'😐':plot.health>20?'😟':'😫';
+  const feedClass = plot.feed>60?'full-feed':plot.feed<30?'low-feed':'';
+  const feedEmoji = plot.feed>60?'🍽️':plot.feed>30?'🍖':'🥣';
+  const waterEmoji = plot.water>60?'💧':plot.water>30?'💦':'🥵';
+  const scaleStyle = animal.stages.length === 1 ? 'style="transform:scale('+(0.5+plot.progress/200)+')"' : '';
+  return '<div class="pen-tile '+feedClass+(isMature?' mature':'')+'"><div class="pen-veg" '+scaleStyle+'>'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+feedEmoji+' '+Math.round(plot.feed)+'%</span><span>'+waterEmoji+' '+Math.round(plot.water)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号栏 · '+animal.name+'</div>'+(isMature?'<div class="plot-badge">可出栏</div>':'')+'<div class="plot-actions"><button onclick="feedPen('+plot.id+')" title="喂食">🍖</button><button onclick="waterPlot('+plot.id+')" title="喂水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="出栏">📦</button>':'')+'</div></div>';
+}
+
+function updateSensors() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm || !farm.monitoring) return;
+  const s = farm.monitoring.sensors;
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour >= 19;
+  const monType = getMonitorType(farm);
+
+  s.temp = clamp(s.temp + (Math.random()-0.5)*2, 5, 42);
+  s.humidity = clamp(s.humidity + (Math.random()-0.5)*5, 20, 95);
+
+  if (monType === 'livestock' || monType === 'mixed') {
+    s.ammonia = clamp(s.ammonia + (Math.random()-0.45)*3, 0, 35);
+    s.feedLevel = clamp(s.feedLevel - 0.5 + (Math.random()-0.5)*2, 0, 100);
+    s.waterLevel = clamp(s.waterLevel - 0.4 + (Math.random()-0.5)*2, 0, 100);
+  }
+  if (monType === 'livestock') {
+    s.noise = clamp(s.noise + (Math.random()-0.5)*8, 25, 85);
+    s.ventilation = clamp(s.ventilation + (Math.random()-0.5)*5, 20, 100);
+  }
+  if (monType === 'crop' || monType === 'mixed') {
+    s.soilMoisture = clamp(s.soilMoisture + (Math.random()-0.5)*3, 15, 95);
+    s.light = isNight ? clamp(s.light*0.3+Math.random()*5, 0, 20) : clamp(s.light+(Math.random()-0.45)*10, 0, 100);
+    if (monType === 'crop') {
+      s.ph = clamp(s.ph + (Math.random()-0.5)*0.2, 5.0, 8.0);
+      s.co2 = clamp(s.co2 + (Math.random()-0.5)*20, 300, 700);
+      s.wind = clamp(s.wind + (Math.random()-0.5)*1.5, 0, 12);
+    }
+    if (monType === 'mixed') {
+      s.co2 = clamp(s.co2 + (Math.random()-0.5)*20, 300, 700);
+    }
+  }
+  renderMonitoring();
+}
+
+function updateGrowth() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm || !farm.monitoring) return;
+  const m = farm.monitoring;
+  m.plots.forEach(plot => {
+    if (!plot.type) return;
+    const tempFactor = Math.max(0.2, 1 - Math.abs(m.sensors.temp - 25) / 30);
+    const healthFactor = plot.health / 100;
+
+    if (plot.category === 'animal') {
+      const feedFactor = plot.feed > 20 ? 1 : 0.2;
+      const waterFactor = plot.water > 20 ? 1 : 0.2;
+      const growthRate = 1.2 * tempFactor * feedFactor * waterFactor * healthFactor;
+      plot.progress = Math.min(100, plot.progress + growthRate);
+      if (plot.feed < 20) plot.health = Math.max(0, plot.health - 2.5);
+      else if (plot.water < 20) plot.health = Math.max(0, plot.health - 2.5);
+      else if (plot.health < 100) plot.health = Math.min(100, plot.health + 0.6);
+      plot.feed = Math.max(0, plot.feed - 1.5);
+      plot.water = Math.max(0, plot.water - 1.2);
+    } else {
+      const moistureFactor = (plot.moisture > 25 && plot.moisture < 90) ? 1 : 0.2;
+      const lightFactor = Math.max(0.1, (m.sensors.light||50) / 100);
+      const growthRate = 1.5 * tempFactor * moistureFactor * lightFactor * healthFactor;
+      plot.progress = Math.min(100, plot.progress + growthRate);
+      if (plot.moisture < 25) plot.health = Math.max(0, plot.health - 3);
+      else if (plot.moisture > 90) plot.health = Math.max(0, plot.health - 1.5);
+      else if (plot.health < 100) plot.health = Math.min(100, plot.health + 0.8);
+      plot.moisture = Math.max(0, plot.moisture - 1.2);
+    }
+  });
+  renderMonitoring();
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+// ---- Crop actions ----
+function waterPlot(plotId) {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const plot = farm.monitoring.plots.find(p => p.id === plotId);
+  if (!plot || !plot.type) return;
+  if (plot.category === 'animal') {
+    plot.water = Math.min(100, plot.water + 25);
+    showWaterEffect(plotId);
+    showToast('💧 '+(plotId+1)+'号栏已喂水', 'success');
+  } else {
+    plot.moisture = Math.min(100, plot.moisture + 25);
+    if (plot.health < 100) plot.health = Math.min(100, plot.health + 5);
+    showWaterEffect(plotId);
+    showToast('💧 '+(plotId+1)+'号地已浇水', 'success');
+  }
+  renderMonitoring();
+}
+
+function waterAll() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  farm.monitoring.plots.forEach(plot => {
+    if (!plot.type) return;
+    if (plot.category === 'animal') { plot.water = Math.min(100, plot.water + 25); showWaterEffect(plot.id); }
+    else { plot.moisture = Math.min(100, plot.moisture + 25); if (plot.health < 100) plot.health = Math.min(100, plot.health + 5); showWaterEffect(plot.id); }
+  });
+  renderMonitoring();
+  showToast('💧 全部已浇水/喂水', 'success');
+}
+
+function fertilizeAll() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  let count = 0;
+  farm.monitoring.plots.forEach(plot => {
+    if (plot.category === 'crop' && plot.type && plot.progress < 100) {
+      plot.progress = Math.min(100, plot.progress + 8);
+      plot.health = Math.min(100, plot.health + 15);
+      count++;
+    }
+  });
+  renderMonitoring();
+  if (count > 0) showToast('🧪 已为 '+count+' 块菜地施肥', 'success');
+  else showToast('没有可施肥的菜地', 'warn');
+}
+
+// ---- Livestock actions ----
+function feedPen(penId) {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const plot = farm.monitoring.plots.find(p => p.id === penId);
+  if (!plot || !plot.type || plot.category !== 'animal') return;
+  plot.feed = Math.min(100, plot.feed + 30);
+  if (plot.health < 100) plot.health = Math.min(100, plot.health + 5);
+  showFeedEffect(penId);
+  renderMonitoring();
+  showToast('🍖 '+(penId+1)+'号栏已喂食', 'success');
+}
+
+function feedAll() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  let count = 0;
+  farm.monitoring.plots.forEach(plot => {
+    if (plot.category === 'animal' && plot.type) {
+      plot.feed = Math.min(100, plot.feed + 30);
+      if (plot.health < 100) plot.health = Math.min(100, plot.health + 5);
+      showFeedEffect(plot.id);
+      count++;
+    }
+  });
+  renderMonitoring();
+  if (count > 0) showToast('🍖 已为 '+count+' 个栏舍喂食', 'success');
+  else showToast('没有可喂食的栏舍', 'warn');
+}
+
+function vaccinateAll() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  let count = 0;
+  farm.monitoring.plots.forEach(plot => {
+    if (plot.category === 'animal' && plot.type) {
+      plot.health = Math.min(100, plot.health + 25);
+      count++;
+    }
+  });
+  renderMonitoring();
+  if (count > 0) showToast('💉 已为 '+count+' 个栏舍完成防疫', 'success');
+  else showToast('没有可防疫的栏舍', 'warn');
+}
+
+// ---- Unified harvest/sell ----
+function harvestPlot(plotId) {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const plot = farm.monitoring.plots.find(p => p.id === plotId);
+  if (!plot || !plot.type || plot.progress < 100) return;
+  if (plot.category === 'animal') {
+    const animalName = ANIMAL_TYPES[plot.type].name;
+    plot.type = null; plot.progress = 0; plot.health = 100; plot.feed = 0; plot.water = 0;
+    farm.monitoring.harvest++;
+    renderMonitoring();
+    showToast('📦 '+animalName+'已出栏！+1', 'success');
+  } else {
+    const vegName = VEG_TYPES[plot.type].name;
+    plot.type = null; plot.progress = 0; plot.health = 100; plot.moisture = 30;
+    farm.monitoring.harvest++;
+    renderMonitoring();
+    showToast('🌾 收割了'+vegName+'！+1', 'success');
+  }
+}
+
+function harvestAll() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  let count = 0;
+  farm.monitoring.plots.forEach(plot => {
+    if (plot.type && plot.progress >= 100) {
+      if (plot.category === 'animal') { plot.type = null; plot.progress = 0; plot.health = 100; plot.feed = 0; plot.water = 0; }
+      else { plot.type = null; plot.progress = 0; plot.health = 100; plot.moisture = 30; }
+      farm.monitoring.harvest++; count++;
+    }
+  });
+  renderMonitoring();
+  if (count > 0) showToast('📦 批量收获 '+count+' 项！+'+count, 'success');
+  else showToast('没有可收获的项目', 'warn');
+}
+
+// ---- Unified plant/stock ----
+function showPlantMenu(plotId) {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const plot = farm.monitoring.plots.find(p => p.id === plotId);
+  if (!plot) return;
+  plantingPlotId = plotId;
+  if (plot.category === 'animal') {
+    document.getElementById('plantModalTitle').innerHTML = '<i class="fas fa-paw"></i> 选择要补栏的动物';
+    document.getElementById('vegGrid').innerHTML = Object.entries(ANIMAL_TYPES).map(([key, animal]) =>
+      '<div class="veg-choice" onclick="doPlant(\''+key+'\')"><span class="veg-emoji">'+animal.stages[animal.stages.length-1]+'</span><span class="veg-name">'+animal.name+'</span></div>'
+    ).join('');
+  } else {
+    document.getElementById('plantModalTitle').innerHTML = '<i class="fas fa-seedling"></i> 选择要种植的蔬菜';
+    document.getElementById('vegGrid').innerHTML = Object.entries(VEG_TYPES).map(([key, veg]) =>
+      '<div class="veg-choice" onclick="doPlant(\''+key+'\')"><span class="veg-emoji">'+veg.stages[veg.stages.length-1]+'</span><span class="veg-name">'+veg.name+'</span></div>'
+    ).join('');
+  }
+  document.getElementById('plantModal').classList.add('show');
+}
+
+function closePlantModal() {
+  document.getElementById('plantModal').classList.remove('show');
+  plantingPlotId = null;
+}
+
+function doPlant(type) {
+  if (plantingPlotId === null) return;
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const plot = farm.monitoring.plots.find(p => p.id === plantingPlotId);
+  if (!plot) return;
+  if (plot.category === 'animal') {
+    plot.type = type; plot.progress = 0; plot.health = 90; plot.feed = 60; plot.water = 60;
+    closePlantModal(); renderMonitoring();
+    showToast('🐔 '+(plot.id+1)+'号栏补栏了'+ANIMAL_TYPES[type].name, 'success');
+  } else {
+    plot.type = type; plot.progress = 0; plot.health = 90; plot.moisture = 50;
+    closePlantModal(); renderMonitoring();
+    showToast('🌱 '+(plot.id+1)+'号地种下了'+VEG_TYPES[type].name, 'success');
+  }
+}
+
+function plantAllEmpty() {
+  const farm = farms.find(f => f.id === monitoringFarmId);
+  if (!farm) return;
+  const vegKeys = Object.keys(VEG_TYPES);
+  const animalKeys = Object.keys(ANIMAL_TYPES);
+  let count = 0;
+  farm.monitoring.plots.forEach(plot => {
+    if (!plot.type) {
+      if (plot.category === 'animal') {
+        plot.type = animalKeys[Math.floor(Math.random()*animalKeys.length)];
+        plot.progress = 0; plot.health = 90; plot.feed = 60; plot.water = 60;
+      } else {
+        plot.type = vegKeys[Math.floor(Math.random()*vegKeys.length)];
+        plot.progress = 0; plot.health = 90; plot.moisture = 50;
+      }
+      count++;
+    }
+  });
+  renderMonitoring();
+  if (count > 0) showToast('🌱 已在 '+count+' 个空位种植/补栏', 'success');
+  else showToast('没有空位可种植/补栏', 'warn');
+}
+
+// ---- Visual effects ----
+function showWaterEffect(plotId) {
+  setTimeout(() => {
+    const tiles = document.querySelectorAll('.plot-tile, .pen-tile');
+    if (tiles[plotId]) {
+      const effect = document.createElement('div');
+      effect.className = 'water-effect';
+      effect.textContent = '💧';
+      tiles[plotId].appendChild(effect);
+      setTimeout(() => effect.remove(), 800);
+    }
+  }, 50);
+}
+
+function showFeedEffect(penId) {
+  setTimeout(() => {
+    const tiles = document.querySelectorAll('.pen-tile, .plot-tile');
+    if (tiles[penId]) {
+      const effect = document.createElement('div');
+      effect.className = 'feed-effect';
+      effect.textContent = '🍖';
+      tiles[penId].appendChild(effect);
+      setTimeout(() => effect.remove(), 800);
+    }
+  }, 50);
+}
+
+// ===== Export =====
+function exportData() {
+  const dataStr = JSON.stringify(farms, null, 2);
+  const blob = new Blob([dataStr], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '城郊家庭农场数据_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('数据已导出', 'success');
+}
+
+// ===== Toast =====
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' '+type : '');
+  setTimeout(() => el.className = 'toast', 2800);
+}
+
+// ===== Sidebar Toggle =====
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+// ===== Keyboard Shortcuts =====
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('photoLightbox').classList.contains('show')) closeLightbox();
+    else if (document.getElementById('cameraOverlay').classList.contains('show')) closeCamera();
+    else if (document.getElementById('plantModal').classList.contains('show')) closePlantModal();
+    else if (document.getElementById('monitorOverlay').classList.contains('show')) closeMonitoring();
+    else if (document.getElementById('formDrawer').classList.contains('show')) closeForm();
+    else if (document.getElementById('detailOverlay').classList.contains('show')) closeDetail();
+  }
+  if (e.key === 'ArrowLeft' && document.getElementById('photoLightbox').classList.contains('show')) navigateLightbox(-1);
+  if (e.key === 'ArrowRight' && document.getElementById('photoLightbox').classList.contains('show')) navigateLightbox(1);
+});
+
+// ===== Init =====
+if (!localStorage.getItem('farmDataV2')) {
+  localStorage.removeItem('farms');
+  localStorage.setItem('farmDataV2', '1');
+}
+renderAll();
+
+const farmsWithCoords = farms.filter(f => f.lat && f.lng);
+if (farmsWithCoords.length > 0) {
+  const bounds = L.latLngBounds(farmsWithCoords.map(f => [f.lat, f.lng]));
+  map.fitBounds(bounds, { padding:[40,40] });
+}
+</script>
+</body>
+</html>
