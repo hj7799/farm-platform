@@ -1349,12 +1349,12 @@ function renderCropTile(plot) {
   const healthEmoji = plot.health>80?'😊':plot.health>50?'😐':plot.health>20?'😟':'😫';
   const moistureClass = plot.moisture>70?'wet':plot.moisture<30?'dry':'';
   const moistureEmoji = plot.moisture>60?'💧':plot.moisture>30?'💦':'🥵';
-  return '<div class="plot-tile '+moistureClass+(isMature?' mature':'')+'"><div class="plot-veg">'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+moistureEmoji+' '+Math.round(plot.moisture)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号地 · '+veg.name+'</div>'+(isMature?'<div class="plot-badge">可收割</div>':'')+'<div class="plot-actions"><button onclick="waterPlot('+plot.id+')" title="浇水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="收割">🌾</button>':'')+'</div></div>';
+  return '<div class="plot-tile '+moistureClass+(isMature?' mature':'')+'"><div class="plot-veg">'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+moistureEmoji+' '+Math.round(plot.moisture)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号地 · '+veg.name+'</div>'+(isMature?'<div class="plot-badge">可收割</div>':'')+'<div class="plot-actions">'+(isViewer()?'<span style="font-size:11px;color:rgba(255,255,255,.5);">🔒 只读</span>':'<button onclick="waterPlot('+plot.id+')" title="浇水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="收割">🌾</button>':''))+'</div></div>';
 }
 
 function renderAnimalPen(plot) {
   if (!plot.type) {
-    return '<div class="pen-tile empty" onclick="showPlantMenu('+plot.id+')"><div class="pen-veg">➕</div><div class="plot-label">'+(plot.id+1)+'号栏 · 空栏</div><div class="plot-actions"><button onclick="event.stopPropagation();showPlantMenu('+plot.id+')" title="补栏">➕</button></div></div>';
+    return '<div class="pen-tile empty" '+(isViewer()?'':'onclick="showPlantMenu('+plot.id+')"')+'><div class="pen-veg">➕</div><div class="plot-label">'+(plot.id+1)+'号栏 · 空栏</div><div class="plot-actions">'+(isViewer()?'<span style="font-size:11px;color:rgba(255,255,255,.5);">🔒 只读</span>':'<button onclick="event.stopPropagation();showPlantMenu('+plot.id+')" title="补栏">➕</button>')+'</div></div>';
   }
   const animal = ANIMAL_TYPES[plot.type];
   const stage = getGrowthStage(plot.progress, animal.stages.length);
@@ -1365,7 +1365,7 @@ function renderAnimalPen(plot) {
   const feedEmoji = plot.feed>60?'🍽️':plot.feed>30?'🍖':'🥣';
   const waterEmoji = plot.water>60?'💧':plot.water>30?'💦':'🥵';
   const scaleStyle = animal.stages.length === 1 ? 'style="transform:scale('+(0.5+plot.progress/200)+')"' : '';
-  return '<div class="pen-tile '+feedClass+(isMature?' mature':'')+'"><div class="pen-veg" '+scaleStyle+'>'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+feedEmoji+' '+Math.round(plot.feed)+'%</span><span>'+waterEmoji+' '+Math.round(plot.water)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号栏 · '+animal.name+'</div>'+(isMature?'<div class="plot-badge">可出栏</div>':'')+'<div class="plot-actions"><button onclick="feedPen('+plot.id+')" title="喂食">🍖</button><button onclick="waterPlot('+plot.id+')" title="喂水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="出栏">📦</button>':'')+'</div></div>';
+  return '<div class="pen-tile '+feedClass+(isMature?' mature':'')+'"><div class="pen-veg" '+scaleStyle+'>'+emoji+'</div><div class="plot-progress"><div class="plot-progress-bar'+(isMature?' full':'')+'" style="width:'+Math.round(plot.progress)+'%"></div></div><div class="plot-stats"><span>'+healthEmoji+'</span><span>'+feedEmoji+' '+Math.round(plot.feed)+'%</span><span>'+waterEmoji+' '+Math.round(plot.water)+'%</span></div><div class="plot-label">'+(plot.id+1)+'号栏 · '+animal.name+'</div>'+(isMature?'<div class="plot-badge">可出栏</div>':'')+'<div class="plot-actions">'+(isViewer()?'<span style="font-size:11px;color:rgba(255,255,255,.5);">🔒 只读</span>':'<button onclick="feedPen('+plot.id+')" title="喂食">🍖</button><button onclick="waterPlot('+plot.id+')" title="喂水">💧</button>'+(isMature?'<button onclick="harvestPlot('+plot.id+')" title="出栏">📦</button>':''))+'</div></div>';
 }
 
 function updateSensors() {
@@ -1440,6 +1440,7 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 // ---- Crop actions ----
 function waterPlot(plotId) {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   const plot = farm.monitoring.plots.find(p => p.id === plotId);
@@ -1458,6 +1459,7 @@ function waterPlot(plotId) {
 }
 
 function waterAll() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   farm.monitoring.plots.forEach(plot => {
@@ -1470,6 +1472,7 @@ function waterAll() {
 }
 
 function fertilizeAll() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   let count = 0;
@@ -1487,6 +1490,7 @@ function fertilizeAll() {
 
 // ---- Livestock actions ----
 function feedPen(penId) {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   const plot = farm.monitoring.plots.find(p => p.id === penId);
@@ -1499,6 +1503,7 @@ function feedPen(penId) {
 }
 
 function feedAll() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   let count = 0;
@@ -1516,6 +1521,7 @@ function feedAll() {
 }
 
 function vaccinateAll() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   let count = 0;
@@ -1532,6 +1538,7 @@ function vaccinateAll() {
 
 // ---- Unified harvest/sell ----
 function harvestPlot(plotId) {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   const plot = farm.monitoring.plots.find(p => p.id === plotId);
@@ -1552,6 +1559,7 @@ function harvestPlot(plotId) {
 }
 
 function harvestAll() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   let count = 0;
@@ -1569,6 +1577,7 @@ function harvestAll() {
 
 // ---- Unified plant/stock ----
 function showPlantMenu(plotId) {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   const plot = farm.monitoring.plots.find(p => p.id === plotId);
@@ -1594,6 +1603,7 @@ function closePlantModal() {
 }
 
 function doPlant(type) {
+  if (isViewer()) return;
   if (plantingPlotId === null) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
@@ -1611,6 +1621,7 @@ function doPlant(type) {
 }
 
 function plantAllEmpty() {
+  if (isViewer()) return;
   const farm = farms.find(f => f.id === monitoringFarmId);
   if (!farm) return;
   const vegKeys = Object.keys(VEG_TYPES);
