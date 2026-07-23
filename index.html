@@ -308,6 +308,66 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
 .marker-icon { width:36px; height:36px; background:var(--primary); border:2px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer; transition:transform .2s; }
 .marker-icon:hover { transform:scale(1.15); }
 
+/* ===== Analytics Panel ===== */
+.analytics-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:2800; display:none; align-items:center; justify-content:center; }
+.analytics-overlay.show { display:flex; }
+.analytics-panel { background:var(--card); border-radius:16px; width:720px; max-width:92vw; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.analytics-header { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; background:var(--primary); color:#fff; border-radius:16px 16px 0 0; position:sticky; top:0; z-index:10; }
+.analytics-header h2 { font-size:18px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.analytics-body { padding:24px; }
+.analytics-close { width:32px; height:32px; border:none; background:rgba(255,255,255,.2); border-radius:8px; cursor:pointer; font-size:16px; color:#fff; transition:all .2s; }
+.analytics-close:hover { background:rgba(255,255,255,.35); }
+.analytics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.analytics-card { background:var(--bg); border-radius:12px; padding:16px; text-align:center; transition:transform .2s; }
+.analytics-card:hover { transform:translateY(-2px); }
+.analytics-card .ac-icon { font-size:20px; margin-bottom:6px; }
+.analytics-card .ac-num { font-size:28px; font-weight:700; color:var(--primary); line-height:1.2; }
+.analytics-card .ac-label { font-size:11px; color:var(--text-light); margin-top:4px; }
+.analytics-card.today { background:#e8f5e9; }
+.analytics-card.today .ac-num { color:var(--primary-dark); }
+.analytics-card.week { background:#e3f2fd; }
+.analytics-card.week .ac-num { color:#1565c0; }
+.analytics-card.avg { background:#fff3e0; }
+.analytics-card.avg .ac-num { color:#e65100; }
+.analytics-section { margin-bottom:24px; }
+.analytics-section-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.bar-chart { display:flex; align-items:flex-end; gap:8px; height:140px; padding:0 4px; }
+.bar-chart .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+.bar-chart .bar { width:100%; max-width:40px; background:linear-gradient(180deg,var(--primary-light),var(--primary)); border-radius:6px 6px 0 0; transition:height .4s ease; min-height:4px; position:relative; cursor:pointer; }
+.bar-chart .bar:hover { background:linear-gradient(180deg,#66bb6a,var(--primary-dark)); }
+.bar-chart .bar .bar-val { position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text); font-weight:600; opacity:0; transition:opacity .2s; }
+.bar-chart .bar:hover .bar-val { opacity:1; }
+.bar-chart .bar-label { font-size:11px; color:var(--text-light); }
+.bar-chart .bar.today-bar { background:linear-gradient(180deg,#ffa726,#e65100); }
+.device-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.device-row .device-icon { width:32px; height:32px; border-radius:8px; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.device-row .device-info { flex:1; }
+.device-row .device-name { font-size:13px; font-weight:600; color:var(--text); }
+.device-row .device-bar { height:8px; background:var(--bg); border-radius:4px; margin-top:4px; overflow:hidden; }
+.device-row .device-bar-fill { height:100%; background:var(--primary); border-radius:4px; transition:width .4s ease; }
+.device-row .device-count { font-size:13px; font-weight:600; color:var(--text); min-width:40px; text-align:right; }
+.visit-log { max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; }
+.visit-log-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); font-size:12px; }
+.visit-log-item:last-child { border-bottom:none; }
+.visit-log-item .vl-icon { width:28px; height:28px; border-radius:50%; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+.visit-log-item .vl-info { flex:1; min-width:0; }
+.visit-log-item .vl-time { color:var(--text); font-weight:500; }
+.visit-log-item .vl-meta { color:var(--text-light); font-size:11px; }
+.visit-log-empty { text-align:center; padding:20px; color:var(--text-light); font-size:13px; }
+.analytics-footer { padding:12px 24px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.analytics-footer .af-info { font-size:12px; color:var(--text-light); }
+.analytics-footer .af-reset { padding:6px 14px; background:#fff; color:var(--danger); border:1px solid var(--danger); border-radius:6px; cursor:pointer; font-size:12px; transition:all .2s; }
+.analytics-footer .af-reset:hover { background:var(--danger); color:#fff; }
+.sidebar-visit-badge { display:flex; align-items:center; gap:6px; margin-top:8px; padding:6px 10px; background:var(--bg); border-radius:8px; font-size:12px; color:var(--text-light); cursor:pointer; transition:all .2s; }
+.sidebar-visit-badge:hover { background:#e8f5e9; color:var(--primary); }
+.sidebar-visit-badge .svb-dot { width:6px; height:6px; border-radius:50%; background:var(--primary-light); animation:pulse 2s infinite; }
+.sidebar-visit-badge .svb-num { font-weight:700; color:var(--primary); }
+@media(max-width:768px) {
+  .analytics-grid { grid-template-columns:repeat(2,1fr); }
+  .analytics-panel { width:100vw; border-radius:0; }
+  .analytics-header { border-radius:0; }
+}
+
 /* ===== Responsive ===== */
 .sidebar-toggle { position:absolute; top:16px; left:16px; z-index:999; width:42px; height:42px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; display:none; align-items:center; justify-content:center; font-size:16px; color:var(--text); box-shadow:0 2px 6px rgba(0,0,0,.08); }
 @media(max-width:768px) {
@@ -366,6 +426,13 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
           <div class="stat-item"><div class="num" id="totalCount">0</div><div class="label">农场总数</div></div>
           <div class="stat-item"><div class="num" id="totalArea">0</div><div class="label">总面积(亩)</div></div>
         </div>
+        <div class="sidebar-visit-badge" onclick="openAnalytics()">
+          <span class="svb-dot"></span>
+          <span>访问量</span>
+          <span class="svb-num" id="sidebarVisitCount">0</span>
+          <span>今日 <span id="sidebarTodayCount" style="font-weight:700;color:var(--primary);">0</span></span>
+          <i class="fas fa-chevron-right" style="margin-left:auto;font-size:10px;"></i>
+        </div>
       </div>
       <!-- Farm List -->
       <div class="sidebar-section" style="border-bottom:none; flex:1;">
@@ -389,6 +456,7 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
       <button class="map-tool-btn active" onclick="switchMapLayer('hybrid')" title="影像+标注" id="btnHybrid"><i class="fas fa-map"></i></button>
       <button class="map-tool-btn" onclick="switchMapLayer('normal')" title="普通地图" id="btnNormal"><i class="fas fa-road"></i></button>
       <button class="map-tool-btn" onclick="resetView()" title="复位视图"><i class="fas fa-crosshairs"></i></button>
+      <button class="map-tool-btn" onclick="openAnalytics()" title="访问统计"><i class="fas fa-chart-line"></i></button>
     </div>
     <!-- Map prompt -->
     <div class="map-prompt" id="mapPrompt"><i class="fas fa-hand-pointer"></i> 点击地图选取农场位置</div>
@@ -574,6 +642,56 @@ body { font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
       </div>
       <button class="auth-btn" onclick="handleRegister()">注 册</button>
       <div class="auth-hint">已有账号？切换到上方「登录」</div>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics Panel -->
+<div class="analytics-overlay" id="analyticsOverlay">
+  <div class="analytics-panel">
+    <div class="analytics-header">
+      <h2><i class="fas fa-chart-line"></i> 网站访问监控</h2>
+      <button class="analytics-close" onclick="closeAnalytics()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="analytics-body">
+      <div class="analytics-grid">
+        <div class="analytics-card">
+          <div class="ac-icon">📊</div>
+          <div class="ac-num" id="acTotal">0</div>
+          <div class="ac-label">总访问量</div>
+        </div>
+        <div class="analytics-card today">
+          <div class="ac-icon">📅</div>
+          <div class="ac-num" id="acToday">0</div>
+          <div class="ac-label">今日访问</div>
+        </div>
+        <div class="analytics-card week">
+          <div class="ac-icon">📆</div>
+          <div class="ac-num" id="acWeek">0</div>
+          <div class="ac-label">本周访问</div>
+        </div>
+        <div class="analytics-card avg">
+          <div class="ac-icon">📈</div>
+          <div class="ac-num" id="acAvg">0</div>
+          <div class="ac-label">日均访问</div>
+        </div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-section-title"><i class="fas fa-chart-bar"></i> 近7天访问趋势</div>
+        <div class="bar-chart" id="barChart"></div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-section-title"><i class="fas fa-mobile-alt"></i> 设备分布</div>
+        <div id="deviceBreakdown"></div>
+      </div>
+      <div class="analytics-section">
+        <div class="analytics-section-title"><i class="fas fa-history"></i> 最近访问记录</div>
+        <div class="visit-log" id="visitLog"></div>
+      </div>
+    </div>
+    <div class="analytics-footer">
+      <span class="af-info" id="analyticsSince">统计开始时间：-</span>
+      <button class="af-reset" onclick="resetAnalytics()"><i class="fas fa-redo"></i> 重置数据</button>
     </div>
   </div>
 </div>
@@ -1696,7 +1814,8 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 // ===== Keyboard Shortcuts =====
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
-    if (document.getElementById('photoLightbox').classList.contains('show')) closeLightbox();
+    if (document.getElementById('analyticsOverlay').classList.contains('show')) closeAnalytics();
+    else if (document.getElementById('photoLightbox').classList.contains('show')) closeLightbox();
     else if (document.getElementById('cameraOverlay').classList.contains('show')) closeCamera();
     else if (document.getElementById('plantModal').classList.contains('show')) closePlantModal();
     else if (document.getElementById('monitorOverlay').classList.contains('show')) closeMonitoring();
@@ -1708,7 +1827,137 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowRight' && document.getElementById('photoLightbox').classList.contains('show')) navigateLightbox(1);
 });
 
+// ===== Website Visit Analytics =====
+function getVisitData() { return JSON.parse(localStorage.getItem('farm_analytics') || '{"visits":[],"daily":{},"devices":{},"firstVisit":null}'); }
+function saveVisitData(data) { localStorage.setItem('farm_analytics', JSON.stringify(data)); }
+function detectDevice() {
+  const ua = navigator.userAgent;
+  if (/iPad|Tablet|PlayBook/i.test(ua)) return 'tablet';
+  if (/Mobile|Android|iPhone|iPod|Windows Phone/i.test(ua)) return 'mobile';
+  return 'desktop';
+}
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Edg/i.test(ua)) return 'Edge';
+  if (/Chrome/i.test(ua)) return 'Chrome';
+  if (/Firefox/i.test(ua)) return 'Firefox';
+  if (/Safari/i.test(ua)) return 'Safari';
+  return '其他';
+}
+function formatDateKey(ts) { const d = new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function getVisitorId() {
+  let id = localStorage.getItem('farm_visitor_id');
+  if (!id) { id = 'v_'+Date.now().toString(36)+Math.random().toString(36).substr(2,6); localStorage.setItem('farm_visitor_id', id); }
+  return id;
+}
+function trackVisit() {
+  const data = getVisitData();
+  const now = Date.now();
+  const todayKey = formatDateKey(now);
+  const visitorId = getVisitorId();
+  const device = detectDevice();
+  const browser = detectBrowser();
+  if (!data.firstVisit) data.firstVisit = now;
+  data.visits.push({ ts: now, device: device, browser: browser, visitorId: visitorId, screen: window.innerWidth+'x'+window.innerHeight, referrer: document.referrer || '直接访问' });
+  if (data.visits.length > 500) data.visits = data.visits.slice(-500);
+  data.daily[todayKey] = (data.daily[todayKey] || 0) + 1;
+  data.devices[device] = (data.devices[device] || 0) + 1;
+  saveVisitData(data);
+  updateSidebarVisitBadge(data);
+}
+function updateSidebarVisitBadge(data) {
+  if (!data) data = getVisitData();
+  const total = data.visits.length;
+  const todayKey = formatDateKey(Date.now());
+  const today = data.daily[todayKey] || 0;
+  const el1 = document.getElementById('sidebarVisitCount');
+  const el2 = document.getElementById('sidebarTodayCount');
+  if (el1) el1.textContent = total;
+  if (el2) el2.textContent = today;
+}
+function openAnalytics() { renderAnalytics(); document.getElementById('analyticsOverlay').classList.add('show'); }
+function closeAnalytics() { document.getElementById('analyticsOverlay').classList.remove('show'); }
+function renderAnalytics() {
+  const data = getVisitData();
+  const total = data.visits.length;
+  const todayKey = formatDateKey(Date.now());
+  const today = data.daily[todayKey] || 0;
+  let weekCount = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = formatDateKey(d.getTime());
+    weekCount += (data.daily[key] || 0);
+  }
+  const dayKeys = Object.keys(data.daily).sort();
+  const trackedDays = dayKeys.length || 1;
+  const avg = Math.round(total / trackedDays);
+  document.getElementById('acTotal').textContent = total;
+  document.getElementById('acToday').textContent = today;
+  document.getElementById('acWeek').textContent = weekCount;
+  document.getElementById('acAvg').textContent = avg;
+  const barChart = document.getElementById('barChart');
+  const dayLabels = ['周日','周一','周二','周三','周四','周五','周六'];
+  let barHtml = '';
+  let maxVal = 1;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = formatDateKey(d.getTime());
+    const count = data.daily[key] || 0;
+    if (count > maxVal) maxVal = count;
+  }
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = formatDateKey(d.getTime());
+    const count = data.daily[key] || 0;
+    const heightPct = (count / maxVal) * 100;
+    const isToday = i === 0;
+    const label = i === 0 ? '今天' : i === 1 ? '昨天' : dayLabels[d.getDay()];
+    barHtml += '<div class="bar-col"><div class="bar'+(isToday?' today-bar':'')+'" style="height:'+heightPct+'%;"><span class="bar-val">'+count+'</span></div><div class="bar-label">'+label+'</div></div>';
+  }
+  barChart.innerHTML = barHtml;
+  const deviceNames = { mobile:'手机', desktop:'电脑', tablet:'平板' };
+  const deviceIcons = { mobile:'fa-mobile-alt', desktop:'fa-desktop', tablet:'fa-tablet-alt' };
+  const deviceColors = { mobile:'#1565c0', desktop:'#2e7d32', tablet:'#e65100' };
+  let deviceHtml = '';
+  const totalDevices = Object.values(data.devices).reduce((s,v) => s+v, 0) || 1;
+  Object.keys(data.devices).forEach(dev => {
+    const count = data.devices[dev];
+    const pct = (count / totalDevices) * 100;
+    deviceHtml += '<div class="device-row"><div class="device-icon" style="color:'+deviceColors[dev]+'"><i class="fas '+deviceIcons[dev]+'"></i></div><div class="device-info"><div class="device-name">'+deviceNames[dev]+' <span style="color:var(--text-light);font-weight:400;font-size:11px;">('+pct.toFixed(0)+'%)</span></div><div class="device-bar"><div class="device-bar-fill" style="width:'+pct+'%;background:'+deviceColors[dev]+';"></div></div></div><div class="device-count">'+count+'</div></div>';
+  });
+  if (!deviceHtml) deviceHtml = '<div class="visit-log-empty">暂无设备数据</div>';
+  document.getElementById('deviceBreakdown').innerHTML = deviceHtml;
+  const recentVisits = data.visits.slice(-15).reverse();
+  let logHtml = '';
+  if (recentVisits.length === 0) {
+    logHtml = '<div class="visit-log-empty">暂无访问记录</div>';
+  } else {
+    recentVisits.forEach(v => {
+      const d = new Date(v.ts);
+      const timeStr = (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      const deviceName = deviceNames[v.device] || v.device;
+      logHtml += '<div class="visit-log-item"><div class="vl-icon"><i class="fas '+(deviceIcons[v.device]||'fa-user')+'" style="color:'+(deviceColors[v.device]||'#666')+'"></i></div><div class="vl-info"><div class="vl-time">'+timeStr+'</div><div class="vl-meta">'+deviceName+' · '+v.browser+' · '+v.screen+' · '+v.referrer+'</div></div></div>';
+    });
+  }
+  document.getElementById('visitLog').innerHTML = logHtml;
+  if (data.firstVisit) {
+    const fd = new Date(data.firstVisit);
+    document.getElementById('analyticsSince').textContent = '统计开始：'+(fd.getFullYear())+'-'+String(fd.getMonth()+1).padStart(2,'0')+'-'+String(fd.getDate()).padStart(2,'0')+'，共记录 '+total+' 次访问';
+  } else {
+    document.getElementById('analyticsSince').textContent = '暂无统计数据';
+  }
+}
+function resetAnalytics() {
+  if (!confirm('确定要清空所有访问统计数据吗？此操作不可撤销。')) return;
+  localStorage.removeItem('farm_analytics');
+  localStorage.removeItem('farm_visitor_id');
+  trackVisit();
+  renderAnalytics();
+  showToast('访问统计已重置', 'success');
+}
+
 // ===== Init =====
+trackVisit();
 if (!localStorage.getItem('farmDataV2')) {
   localStorage.removeItem('farms');
   localStorage.setItem('farmDataV2', '1');
